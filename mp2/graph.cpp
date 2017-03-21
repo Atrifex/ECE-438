@@ -62,7 +62,6 @@ Graph::Graph(int id, char * filename)
                 int node_to = atoi(cur_node);
                 int cost_to = atoi(cur_cost);
 
-                valid[globalNodeID][node_to] = true;
                 cost[globalNodeID][node_to] = cost_to;
         }
 

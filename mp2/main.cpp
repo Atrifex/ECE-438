@@ -48,9 +48,8 @@ int main(int argc, char** argv)
 		inet_pton(AF_INET, tempaddr, &globalNodeAddrs[i].sin_addr);
 	}
 
-	// TODO: Create Graph object with all invalid entries with cost 1
+        // Parse input and construct graph 
         Graph network(globalMyID, argv[2]);
-        network.display();
 
 	//socket() and bind() our socket. We will do all sendto()ing and recvfrom()ing on this one.
 	if((globalSocketUDP=socket(AF_INET, SOCK_DGRAM, 0)) < 0)
