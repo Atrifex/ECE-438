@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pthread.h>
+#include "graph.h"
 
 void listenForNeighbors();
 void* announceToNeighbors(void* unusedParam);
@@ -35,8 +36,7 @@ int main(int argc, char** argv)
 	//initialization: get this process's node ID, record what time it is,
 	//and set up our sockaddr_in's for sending to the other nodes.
 	globalMyID = atoi(argv[1]);
-	int i, j;
-	for(i=0;i<256;i++)
+	for(int i=0;i<256;i++)
 	{
 		gettimeofday(&globalLastHeartbeat[i], 0);
 
@@ -49,58 +49,8 @@ int main(int argc, char** argv)
 	}
 
 	// TODO: Create Graph object with all invalid entries with cost 1
-
-	//TODO: read and parse initial costs file. default to cost 1 if no entry for a node. file may be empty.
-	// Note: below code will end up going in the graph constructor
-	int j, k;
-	int num_bytes;
-	int bytes_read;
-	char * initialcostsfile = (char*)argv[2];
-	FILE * fp = fopen(initialcostsfile, "r");
-
-	if(fp == NULL)
-	{
-		fprintf("Erroneous initial costs file provided\n");
-		exit(1);
-	}
-
-	// Check for an empty file
-	int filesize = fseek(fp, 0, SEEK_END); // size is 0 if empty
-  rewind(fp);
-
-	if(filesize != 0)
-	{
-		char cur_node[4];
-		char cur_cost[8]; // Cost must be less than 2^23
-		char * cur_link = (char*) malloc((num_bytes + 1)*sizeof(char));
-		while((bytes_read = getline(&cur_link, &num_bytes, fp)) != -1) // Read a line from the initial costs file
-		{
-				// Parse each line individually, filling out the cur_node and cur_cost strings
-				j = 0;
-				while(cur_link[j] != ' ')
-				{
-					cur_node[j] = cur_link[j];
-					j++;
-				}
-				cur_node[j] = '\0'; // Assume they aren't trying to break stuff
-
-				j++;
-				k = 0;
-				while(cur_link[j] != '\n')
-				{
-					cur_cost[k] = cur_link[j];
-					k++; j++;
-				}
-				cur_cost[k] = '\0'; // Again, assume they aren't trying to break things
-
-				int node_int = atoi(cur_node);
-				int cost_int = atoi(cur_cost);
-
-				// Update link cost in the graph accordingly
-		}
-
-		free(cur_link);
-	}
+        Graph network(globalMyID, argv[2]);
+        network.display();
 
 	//socket() and bind() our socket. We will do all sendto()ing and recvfrom()ing on this one.
 	if((globalSocketUDP=socket(AF_INET, SOCK_DGRAM, 0)) < 0)
