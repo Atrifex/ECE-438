@@ -27,6 +27,9 @@
 *.exe
 *.out
 *.app
+vec_router
+ls_router
+manager_send
 
 # Random things
 *.swp
