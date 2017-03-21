@@ -6,7 +6,7 @@ LDFLAGS = -std=c++1y -stdlib=libc++ -lc++abi -lpthread
 all: vec_router ls_router manager_send
 
 #vec_router: main.o monitor_neighbors.o
-	#$(LD) main.o monitor_neighbors.o $(LDFLAGS) -o vec_router
+#$(LD) main.o monitor_neighbors.o $(LDFLAGS) -o vec_router
 
 vec_router: main.cpp monitor_neighbors.cpp
 	$(CXX) -pthread -o vec_router main.cpp monitor_neighbors.cpp
