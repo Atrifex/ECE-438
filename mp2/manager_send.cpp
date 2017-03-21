@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 	else
 	{
 		int msgLen = 4+sizeof(short int)+strlen(argv[4]);
-		char* sendBuf = malloc(msgLen);
+		char* sendBuf = (char *)malloc(msgLen);
 
 		strcpy(sendBuf, "send");
 		memcpy(sendBuf+4, &no_destID, sizeof(short int));
