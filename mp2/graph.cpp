@@ -13,7 +13,8 @@ Graph::Graph(int id)
 Graph::Graph(int id, char * filename)
 {
     int j, k;
-    size_t num_bytes, bytes_read;
+    size_t num_bytes;
+    int bytes_read;
     char * initialcostsfile = filename;
     FILE * fp = fopen(initialcostsfile, "r");
 
@@ -29,7 +30,8 @@ Graph::Graph(int id, char * filename)
     }
 
     // Check for an empty file
-    int filesize = fseek(fp, 0, SEEK_END); // size is 0 if empty
+    fseek(fp, 0, SEEK_END);
+    int filesize = ftell(fp); // size is 0 if empty
     rewind(fp);
 
     if(filesize != 0)
@@ -94,4 +96,3 @@ void Graph::display()
         }
     }
 }
-

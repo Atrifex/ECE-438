@@ -2,6 +2,7 @@
 #define GRAPH_H
 
 #include <cstdlib>
+#include <stdio.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -28,12 +29,11 @@ class Graph
 
     private:
         int globalNodeID;
-        
+
         // NOTE: vectors are indexed [From][To]
         vector< vector<bool> > valid;
         vector< vector<int> > cost;
 };
 
 
-#endif 
-
+#endif
