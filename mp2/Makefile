@@ -9,11 +9,11 @@ all: vec_router ls_router manager_send
 #$(LD) main2.o vec_router.o $(LDFLAGS) -o vec_router
 
 # Temporarily have vec_router = ls_router
-vec_router: main.o ls_router.o
-	$(LD) main.o ls_router.o $(LDFLAGS) -o ls_router
+vec_router: main.o ls_router.o graph.o
+	$(LD) main.o ls_router.o graph.o $(LDFLAGS) -o ls_router
 
-ls_router: main.o ls_router.o
-	$(LD) main.o ls_router.o $(LDFLAGS) -o ls_router
+ls_router: main.o ls_router.o graph.o
+	$(LD) main.o ls_router.o graph.o $(LDFLAGS) -o ls_router
 
 manager_send: manager_send.o
 	$(LD) manager_send.o $(LDFLAGS) -o manager_send
