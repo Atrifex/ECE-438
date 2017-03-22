@@ -1,21 +1,34 @@
 CXX = g++
 LD = g++
-CXXFLAGS = -g -std=c++1y -Wall -Wextra -pedantic -MP -MMD
-LDFLAGS = -std=c++1y -lc++abi -lpthread
+CXXFLAGS = -c -g -std=c++1y -Wall -Wextra -pedantic
+LDFLAGS = -std=c++1y -lc++abi -pthread
 
 all: vec_router ls_router manager_send
 
-#vec_router: main.o monitor_neighbors.o
-#$(LD) main.o monitor_neighbors.o $(LDFLAGS) -o vec_router
+#vec_router: main2.o vec_router.o
+#$(LD) main2.o vec_router.o $(LDFLAGS) -o vec_router
 
-vec_router: main.cpp monitor_neighbors.cpp graph.cpp
-	$(CXX) -pthread $(CXXFLAGS) -o vec_router main.cpp monitor_neighbors.cpp graph.cpp
+# Temporarily have vec_router = ls_router
+vec_router: main.o ls_router.o
+	$(LD) main.o ls_router.o $(LDFLAGS) -o ls_router
 
-ls_router: main.cpp monitor_neighbors.cpp graph.cpp
-	$(CXX) -pthread $(CXXFLAGS) -o ls_router main.cpp monitor_neighbors.cpp graph.cpp
+ls_router: main.o ls_router.o
+	$(LD) main.o ls_router.o $(LDFLAGS) -o ls_router
 
-manager_send: manager_send.cpp
-	$(CXX) -o manager_send manager_send.cpp
+manager_send: manager_send.o
+	$(LD) manager_send.o $(LDFLAGS) -o manager_send
+
+main.o: main.cpp ls_router.h graph.h
+	$(CXX) $(CXXFLAGS) main.cpp
+
+manager_send.o: manager_send.cpp
+	$(CXX) $(CXXFLAGS) manager_send.cpp
+
+ls_router.o: ls_router.cpp ls_router.h graph.h
+	$(CXX) $(CXXFLAGS) ls_router.cpp
+
+graph.o: graph.cpp graph.h
+	$(CXX) $(CXXFLAGS) graph.cpp
 
 clean:
 		rm -f *.o vec_router ls_router manager_send
