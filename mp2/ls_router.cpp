@@ -1,6 +1,13 @@
 
 #include "ls_router.h"
 
+// Instances of static members
+int LS_Router::globalNodeID;
+int LS_Router::socket_fd;
+struct timeval LS_Router::globalLastHeartbeat[NUM_NODES];
+struct sockaddr_in LS_Router::globalNodeAddrs[NUM_NODES];
+Graph LS_Router::network;
+
 LS_Router::LS_Router(int id, char * filename)
 {
     char myAddr[100];
