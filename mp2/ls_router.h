@@ -28,10 +28,12 @@ class LS_Router
         // Constructor and Destructor
         LS_Router(int id, char * filename);
         ~LS_Router();
-        
+
         // Member Functions
         void announceToNeighbors();
         void listenForNeighbors();
+
+        // TODO: Deal with manager's messages
 
         // testing function
 
@@ -42,7 +44,7 @@ class LS_Router
         // our all-purpose UDP socket, to be bound to 10.1.1.globalMyID, port 7777
         static int socket_fd;
 
-        // last time you heard from each node. 
+        // last time you heard from each node.
         // TODO: you will want to monitor this in order to realize when a neighbor has gotten cut off from you.
         static struct timeval globalLastHeartbeat[NUM_NODES];
 

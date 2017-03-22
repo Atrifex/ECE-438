@@ -27,6 +27,8 @@ class Graph
         int get_link_cost(int from, int to);
         void update_link(bool status, int linkCost, int from, int to);
 
+        // TODO: Dijkstra's Algorithm
+
         // testing function
         void display();
 
