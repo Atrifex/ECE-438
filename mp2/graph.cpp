@@ -1,15 +1,6 @@
 
 #include "graph.h"
 
-Graph::Graph(int id)
-{
-    globalNodeID = id;
-
-    valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
-    cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
-
-}
-
 Graph::Graph(int id, char * filename)
 {
     int j, k;
@@ -67,6 +58,18 @@ Graph::Graph(int id, char * filename)
 
         free(cur_link);
     }
+}
+
+Graph & Graph::operator=(Graph & other)
+{
+    if(this != &other)
+    {
+        globalNodeID = other.globalNodeID;
+        valid = other.valid;
+        cost = other.cost;
+    }
+
+    return *this;
 }
 
 int Graph::get_link_cost(int from, int to)

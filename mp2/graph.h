@@ -11,14 +11,17 @@
 #define INIT_COST 1
 #define INVALID -1
 
-using namespace std;
+using std::cout;
+using std::endl;
+using std::vector;
 
 class Graph
 {
     public:
         // Constructor
-        Graph(int id);
+        Graph(){};
         Graph(int id, char * filename);
+        Graph & operator=(Graph & other);
 
         // get and set functions
         int get_link_cost(int from, int to);
