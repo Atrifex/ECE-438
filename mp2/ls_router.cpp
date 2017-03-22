@@ -11,7 +11,7 @@ LS_Router::LS_Router(int id, char * filename)
     network = temp;
 
     globalNodeID = id;
-    
+
     //initialization: get this process's node ID, record what time it is,
     //and set up our sockaddr_in's for sending to the other nodes.
     for(int i=0;i<256;i++)
@@ -60,7 +60,7 @@ void LS_Router::hackyBroadcast(const char* buf, int length)
     int i;
     for(i=0;i<NUM_NODES;i++){
         if(i != globalNodeID){
-            sendto(socket_fd, buf, length, 0, 
+            sendto(socket_fd, buf, length, 0,
                 (struct sockaddr*)&globalNodeAddrs[i], sizeof(globalNodeAddrs[i]));
         }
     }
@@ -83,6 +83,8 @@ void * LS_Router::announcer(void * arg)
         hackyBroadcast("HEREIAM", 7);
         nanosleep(&sleepFor, 0);
     }
+
+    return arg;
 }
 
 void LS_Router::listenForNeighbors()
