@@ -10,40 +10,42 @@ int main(int argc, char** argv)
 
     Graph example;
 
-    example.updateLink(true, 60, 0, 87);
-    example.updateLink(true, 60, 87, 0);
+    example.updateLink(true, 50, 0, 33);
+    example.updateLink(true, 50, 33, 0);
 
-    example.updateLink(true, 5, 0, 5);
-    example.updateLink(true, 5, 5, 0);
+    example.updateLink(true, 200, 0, 10);
+    example.updateLink(true, 200, 10, 0);
 
-    example.updateLink(true, 101, 5, 87);
-    example.updateLink(true, 101, 87, 5);
+    example.updateLink(true, 130, 0, 20);
+    example.updateLink(true, 130, 20, 0);
 
-    example.updateLink(true, 100, 5, 200);
-    example.updateLink(true, 100, 200, 5);
+    example.updateLink(true, 30, 0, 30);
+    example.updateLink(true, 30, 30, 0);
 
-    example.updateLink(true, 32, 87, 200);
-    example.updateLink(true, 32, 200, 87);
+    example.updateLink(true, 10, 0, 66);
+    example.updateLink(true, 10, 66, 0);
 
-    example.updateLink(true, 340, 87, 69);
-    example.updateLink(true, 340, 69, 87);
+    example.updateLink(true, 20, 33, 66);
+    example.updateLink(true, 20, 66, 33);
 
-    example.updateLink(true, 90, 69, 200);
-    example.updateLink(true, 90, 200, 69);
+    example.updateLink(true, 60, 33, 10);
+    example.updateLink(true, 60, 10, 33);
 
-    example.updateLink(true, 1, 69, 70);
-    example.updateLink(true, 1, 70, 69);
+    example.updateLink(true, 3, 10, 20);
+    example.updateLink(true, 3, 20, 10);
 
-    example.updateLink(true, 2, 70, 71);
-    example.updateLink(true, 2, 71, 70);
+    example.updateLink(true, 90, 20, 30);
+    example.updateLink(true, 90, 30, 20);
 
-  //  example.display();
+    example.updateLink(true, 21, 30, 66);
+    example.updateLink(true, 21, 66, 30);
 
-    stack<int> path;
-    path = example.dijkstraTest(71);
-    path = example.dijkstraTest(87);
-    path = example.dijkstraTest(200);
-    path = example.dijkstraTest(255);
+    cout << example.dijkstraGetNextNode(66) << endl;
+    cout << example.dijkstraGetNextNode(30) << endl;
+    cout << example.dijkstraGetNextNode(20) << endl;
+    cout << example.dijkstraGetNextNode(10) << endl;
+    cout << example.dijkstraGetNextNode(33) << endl;
+    cout << example.dijkstraGetNextNode(250) << endl;
 
     // Parse input and initialize router
     //LS_Router router(atoi(argv[1]), argv[2]);
