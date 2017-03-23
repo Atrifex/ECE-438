@@ -8,7 +8,8 @@
 #include <limits>
 #include <vector>
 #include <queue>
-#include<utility>
+#include <stack>
+#include <utility>
 
 #define NUM_NODES 256
 #define INIT_COST 1
@@ -22,6 +23,8 @@ using std::priority_queue;
 using std::pair;
 using std::make_pair;
 using std::greater;
+using std::queue;
+using std::stack;
 
 // pairs are stored as <distance, nodeID>
 typedef pair<int,int> int_pair;
@@ -46,6 +49,7 @@ class Graph
 
         // testing function
         void display();
+        stack<int> dijkstraTest(int to);
 
     private:
         int globalNodeID;

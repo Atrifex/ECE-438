@@ -37,14 +37,17 @@ int main(int argc, char** argv)
     example.updateLink(true, 2, 70, 71);
     example.updateLink(true, 2, 71, 70);
 
-    cout << example.dijkstraGetNextNode(71) << endl;
-    cout << example.dijkstraGetNextNode(87) << endl;
-    cout << example.dijkstraGetNextNode(200) << endl;
-    cout << example.dijkstraGetNextNode(255) << endl;
+  //  example.display();
+
+    stack<int> path;
+    path = example.dijkstraTest(71);
+    path = example.dijkstraTest(87);
+    path = example.dijkstraTest(200);
+    path = example.dijkstraTest(255);
 
     // Parse input and initialize router
     //LS_Router router(atoi(argv[1]), argv[2]);
-    
+
     // start announcing
     //router.announceToNeighbors();
 

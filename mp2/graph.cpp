@@ -117,7 +117,7 @@ int Graph::dijkstraGetNextNode(int to)
     // initialize vectors
     distance[globalNodeID] = 0;
     pq.push(make_pair(0, globalNodeID));
-    
+
     while(!pq.empty()){
 
         int_pair cur = pq.top();
@@ -131,11 +131,11 @@ int Graph::dijkstraGetNextNode(int to)
         vector<int> neighbors(0);
         getNeighbors(nodeID, neighbors);
 
-        for(int i = 0; i < neighbors.size(); i++) {
+        for(size_t i = 0; i < neighbors.size(); i++) {
             if(distAbs + cost[nodeID][neighbors[i]] < distance[neighbors[i]]){
                 distance[neighbors[i]] = distAbs + cost[nodeID][neighbors[i]];
                 predecessor[neighbors[i]] = nodeID;
-                pq.push(make_pair(distance[neighbors[i]],i));
+                pq.push(make_pair(distance[neighbors[i]],neighbors[i]));
             }
         }
     }
@@ -147,6 +147,52 @@ int Graph::dijkstraGetNextNode(int to)
         nextNode = predecessor[nextNode];
 
     return nextNode;
+}
+
+stack<int> Graph::dijkstraTest(int to)
+{
+    priority_queue< int_pair, vector<int_pair>, greater<int_pair> > pq;
+    vector<int> distance(NUM_NODES, numeric_limits<int>::max());
+    vector<int> predecessor(NUM_NODES, INVALID);
+    stack<int> path;
+
+    // initialize vectors
+    distance[globalNodeID] = 0;
+    pq.push(make_pair(0, globalNodeID));
+
+    while(!pq.empty()){
+
+        int_pair cur = pq.top();
+        int nodeID = cur.second;
+        int distAbs = cur.first;
+        pq.pop();
+
+        if(distAbs > distance[nodeID])
+            continue;
+
+        vector<int> neighbors(0);
+        getNeighbors(nodeID, neighbors);
+
+        for(size_t i = 0; i < neighbors.size(); i++) {
+            if(distAbs + cost[nodeID][neighbors[i]] < distance[neighbors[i]]){
+                distance[neighbors[i]] = distAbs + cost[nodeID][neighbors[i]];
+                predecessor[neighbors[i]] = nodeID;
+                pq.push(make_pair(distance[neighbors[i]],neighbors[i]));
+            }
+        }
+    }
+
+    if(predecessor[to] == INVALID) return path;
+
+    int nextNode = to;
+    while(nextNode != globalNodeID)
+    {
+        path.push(nextNode);
+        nextNode = predecessor[nextNode];
+    }
+    path.push(nextNode);
+
+    return path;
 }
 
 void Graph::display()
