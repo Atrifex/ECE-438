@@ -120,9 +120,11 @@ void LS_Router::listenForNeighbors()
             heardFromNode = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
 
             // this node can consider heardFromNode to be directly connected to it; do any such logic now.
-            // TODO: perform Dijkstra if it was invalid and is changing to valid
-            network.updateLink(true, globalNodeID, heardFromNode);
-            network.updateLink(true, heardFromNode, globalNodeID);
+            if(network.getLinkCost(globalNodeID, heardFromNode) == INVALID){
+                network.updateLink(true, globalNodeID, heardFromNode);
+                network.updateLink(true, heardFromNode, globalNodeID);
+                forwardingTable[heardFromNode] = network.dijkstraGetNextNode(heardFromNode);
+            }
             
             //record that we heard from heardFromNode just now.
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
