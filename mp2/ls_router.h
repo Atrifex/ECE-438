@@ -32,7 +32,8 @@ class LS_Router
         // Member Functions
         void announceToNeighbors();
         void listenForNeighbors();
-
+        // TODO: Need thread to check heartbeat threshold, perform Dijkstra if changing from valid to invalid
+        // TODO: Need thread to forward heartbeat and cost
         // TODO: Deal with manager's messages
 
         // testing function
@@ -41,7 +42,7 @@ class LS_Router
     private:
         static int globalNodeID;
 
-        // our all-purpose UDP socket, to be bound to 10.1.1.globalMyID, port 7777
+        // our all-purpose UDP socket, to be bound to 10.1.1.globalNodeID, port 7777
         static int socket_fd;
 
         // last time you heard from each node.

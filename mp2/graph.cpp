@@ -72,12 +72,22 @@ Graph & Graph::operator=(Graph & other)
     return *this;
 }
 
-int Graph::get_link_cost(int from, int to)
+int Graph::getLinkCost(int from, int to)
 {
     return (valid[from][to] == false)? INVALID : cost[from][to];
 }
 
-void Graph::update_link(bool status, int linkCost, int from, int to)
+void Graph::updateLink(bool status, int from, int to)
+{
+    valid[from][to] = status;
+}
+
+void Graph::updateLink(int linkCost, int from, int to)
+{
+    cost[from][to] = linkCost;
+}
+
+void Graph::updateLink(bool status, int linkCost, int from, int to)
 {
     valid[from][to] = status;
     cost[from][to] = linkCost;

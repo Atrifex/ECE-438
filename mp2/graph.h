@@ -24,8 +24,10 @@ class Graph
         Graph & operator=(Graph & other);
 
         // get and set functions
-        int get_link_cost(int from, int to);
-        void update_link(bool status, int linkCost, int from, int to);
+        int getLinkCost(int from, int to);
+        void updateLink(bool status, int from, int to);
+        void updateLink(int linkCost, int from, int to);
+        void updateLink(bool status, int linkCost, int from, int to);
 
         // TODO: Dijkstra's Algorithm
 

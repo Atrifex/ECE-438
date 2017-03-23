@@ -77,7 +77,6 @@ void LS_Router::announceToNeighbors()
 {
     pthread_t announcerThread;
     pthread_create(&announcerThread, 0, announcer, (void*)0);
-
 }
 
 void * LS_Router::announcer(void * arg)
@@ -97,46 +96,56 @@ void * LS_Router::announcer(void * arg)
 void LS_Router::listenForNeighbors()
 {
     char fromAddr[100];
-    struct sockaddr_in theirAddr;
-    socklen_t theirAddrLen;
+    struct sockaddr_in senderAddr;
+    socklen_t senderAddrLen;
     unsigned char recvBuf[1000];
 
     int bytesRecvd;
     while(1)
     {
-        theirAddrLen = sizeof(theirAddr);
+        senderAddrLen = sizeof(senderAddr);
         if ((bytesRecvd = recvfrom(socket_fd, recvBuf, 1000 , 0,
-                (struct sockaddr*)&theirAddr, &theirAddrLen)) == -1) {
+                (struct sockaddr*)&senderAddr, &senderAddrLen)) == -1) {
             perror("connectivity listener: recvfrom failed");
             exit(1);
         }
 
-        inet_ntop(AF_INET, &theirAddr.sin_addr, fromAddr, 100);
+        inet_ntop(AF_INET, &senderAddr.sin_addr, fromAddr, 100);
 
-        short int heardFrom = -1;
+        short int heardFromNode = -1;
         if(strstr(fromAddr, "10.1.1."))
         {
-                heardFrom = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
+            heardFromNode = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
 
-                //TODO: this node can consider heardFrom to be directly connected to it; do any such logic now.
-
-                //record that we heard from heardFrom just now.
-                gettimeofday(&globalLastHeartbeat[heardFrom], 0);
+            // this node can consider heardFromNode to be directly connected to it; do any such logic now.
+            // TODO: perform Dijkstra if it was invalid and is changing to valid
+            network.updateLink(true, globalNodeID, heardFromNode);
+            network.updateLink(true, heardFromNode, globalNodeID);
+            
+            //record that we heard from heardFromNode just now.
+            gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
         }
 
-        //Is it a packet from the manager? (see mp2 specification for more details)
-        //send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
-        if(!strncmp((const char*)recvBuf, (const char*)"send", 4))
-        {
-                //TODO send the requested message to the requested destination node
-                // ...
-        }
-        //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
-        else if(!strncmp((const char*)recvBuf, (const char*)"cost", 4))
-        {
-                //TODO record the cost change (remember, the link might currently be down! in that case,
-                //this is the new cost you should treat it as having once it comes back up.)
-                // ...
+        short int destID;
+        // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
+        if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
+            destID = ntohs(((short int*)recvBuf)[2]);
+
+            // TODO: lookup in forwarding table. If invalid, then do nothing.
+            // TODO: send the requested message to the requested destination node
+            
+
+        } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
+            //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
+            //TODO record the cost change (remember, the link might currently be down! in that case,
+            //this is the new cost you should treat it as having once it comes back up.)
+            // ...
+            destID = ntohs(((short int*)recvBuf)[2]);
+            network.updateLink(ntohs(*((int*)&(((char*)recvBuf)[6]))), globalNodeID, destID);
+
+            // TODO: perform Dijkstra
+
+
         }
 
         //TODO now check for the various types of packets you use in your own protocol
