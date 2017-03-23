@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <limits>
 #include <vector>
+#include <queue>
+#include<utility>
 
 #define NUM_NODES 256
 #define INIT_COST 1
@@ -14,12 +17,20 @@
 using std::cout;
 using std::endl;
 using std::vector;
+using std::numeric_limits;
+using std::priority_queue;
+using std::pair;
+using std::make_pair;
+using std::greater;
+
+// pairs are stored as <distance, nodeID>
+typedef pair<int,int> int_pair;
 
 class Graph
 {
     public:
         // Constructor
-        Graph(){};
+        Graph();
         Graph(int id, char * filename);
         Graph & operator=(Graph & other);
 
@@ -29,7 +40,9 @@ class Graph
         void updateLink(int linkCost, int from, int to);
         void updateLink(bool status, int linkCost, int from, int to);
 
-        // TODO: Dijkstra's Algorithm
+        // Member Functions
+        void getNeighbors(int nodeID, vector<int> & neighbors);
+        int dijkstraGetNextNode(int to);
 
         // testing function
         void display();

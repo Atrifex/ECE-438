@@ -60,6 +60,9 @@ class LS_Router
         static void hackyBroadcast(const char* buf, int length);
 
         static void * announcer(void * arg);
+
+        // Forwarding table
+        static vector<int> forwardingTable;
 };
 
 

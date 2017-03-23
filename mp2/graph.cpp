@@ -1,6 +1,13 @@
 
 #include "graph.h"
 
+Graph::Graph()
+{
+    globalNodeID = 0;
+    valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
+    cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
+}
+
 Graph::Graph(int id, char * filename)
 {
     int j, k;
@@ -93,6 +100,54 @@ void Graph::updateLink(bool status, int linkCost, int from, int to)
     cost[from][to] = linkCost;
 }
 
+void Graph::getNeighbors(int nodeID, vector<int> & neighbors)
+{
+    for(int i = 0; i < NUM_NODES; i++) {
+        if(valid[nodeID][i] == true)
+            neighbors.push_back(i);
+    }
+}
+
+int Graph::dijkstraGetNextNode(int to)
+{
+    priority_queue< int_pair, vector<int_pair>, greater<int_pair> > pq;
+    vector<int> distance(NUM_NODES, numeric_limits<int>::max());
+    vector<int> predecessor(NUM_NODES, INVALID);
+
+    // initialize vectors
+    distance[globalNodeID] = 0;
+    pq.push(make_pair(0, globalNodeID));
+    
+    while(!pq.empty()){
+
+        int_pair cur = pq.top();
+        int nodeID = cur.second;
+        int distAbs = cur.first;
+        pq.pop();
+
+        if(distAbs > distance[nodeID])
+            continue;
+
+        vector<int> neighbors(0);
+        getNeighbors(nodeID, neighbors);
+
+        for(int i = 0; i < neighbors.size(); i++) {
+            if(distAbs + cost[nodeID][neighbors[i]] < distance[neighbors[i]]){
+                distance[neighbors[i]] = distAbs + cost[nodeID][neighbors[i]];
+                predecessor[neighbors[i]] = nodeID;
+                pq.push(make_pair(distance[neighbors[i]],i));
+            }
+        }
+    }
+
+    if(predecessor[to] == INVALID) return INVALID;
+
+    int nextNode = to;
+    while(predecessor[nextNode] != globalNodeID)
+        nextNode = predecessor[nextNode];
+
+    return nextNode;
+}
 
 void Graph::display()
 {

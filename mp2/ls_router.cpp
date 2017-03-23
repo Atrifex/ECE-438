@@ -7,6 +7,7 @@ int LS_Router::socket_fd;
 struct timeval LS_Router::globalLastHeartbeat[NUM_NODES];
 struct sockaddr_in LS_Router::globalNodeAddrs[NUM_NODES];
 Graph LS_Router::network;
+vector<int> LS_Router::forwardingTable;
 
 LS_Router::LS_Router(int id, char * filename)
 {
@@ -54,6 +55,7 @@ LS_Router::LS_Router(int id, char * filename)
         exit(1);
     }
 
+    forwardingTable.resize(NUM_NODES, INVALID);
 }
 
 LS_Router::~LS_Router()
