@@ -108,6 +108,8 @@ void LS_Router::listenForNeighbors()
     socklen_t senderAddrLen;
     unsigned char recvBuf[1000];
 
+    memset(recvBuf, 0, 1000);
+
     int bytesRecvd;
     while(1)
     {
