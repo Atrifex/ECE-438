@@ -20,6 +20,12 @@
 #include <vector>
 #include "graph.h"
 
+// Log message types
+#define FORWARD_MES 0
+#define SEND_MES 1
+#define RECV_MES 2
+#define UNREACHABLE_MES 3
+
 #define GLOBAL_COM_PORT 7777
 #define SEND_SIZE 106
 
@@ -37,8 +43,10 @@ class LS_Router
         // TODO: Need thread to forward heartbeat and cost
         // TODO: Deal with manager's messages
 
-        // testing function
+		// testing function
 
+        // logging function
+		int logToFile(FILE* fp, int log_type, int dest, int nexthop, char* message);
 
     private:
         static int globalNodeID;
