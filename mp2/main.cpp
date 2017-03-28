@@ -10,11 +10,8 @@ int main(int argc, char** argv)
 
     /*
      * TODO:
-     *      1) handle send (Rishi)
-     *      2) Logging output for grading and debugging (Nathan)
-     *      3) Test with neighbors (together)
-     *      4) look at heartbeats (Whoever gets here first)
-     *      5) send lsp (together)
+     *      1) look at heartbeats (Whoever gets here first)
+     *      2) send lsp (together)
      *          - avoid flooding
      *          - might require using variation of lsp
      */
