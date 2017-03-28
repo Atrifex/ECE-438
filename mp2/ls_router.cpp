@@ -1,4 +1,3 @@
-
 #include "ls_router.h"
 
 // Instances of static members
@@ -210,6 +209,8 @@ int LS_Router::logToFile(int log_type, short int dest, short int nexthop, char* 
             fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
             return -1;
     }
+
+    fflush(logFilePtr);
 
     return 0;
 }
