@@ -36,7 +36,7 @@ Graph::Graph(int id, char * filename)
     {
         char cur_node[4];
         char cur_cost[8]; // Cost must be less than 2^23
-        char * cur_link = (char*) malloc((num_bytes + 1)*sizeof(char));
+        char * cur_link = (char*) malloc((filesize + 1)*sizeof(char));
         while((bytes_read = getline(&cur_link, &num_bytes, fp)) != -1) // Read a line from the initial costs file
         {
                 // Parse each line individually, filling out the cur_node and cur_cost strings
@@ -50,7 +50,7 @@ Graph::Graph(int id, char * filename)
 
                 j++;
                 k = 0;
-                while(cur_link[j] != '\n')
+                while(cur_link[j] != '\n' && cur_link[j] != '\0')
                 {
                         cur_cost[k] = cur_link[j];
                         k++; j++;
