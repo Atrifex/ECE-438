@@ -20,7 +20,7 @@ int main(int argc, char** argv)
      */
 
     // Parse input and initialize router
-    LS_Router router(atoi(argv[1]), argv[2]);
+    LS_Router router(atoi(argv[1]), argv[2], argv[3]);
 
     // start announcing
     router.announceToNeighbors();

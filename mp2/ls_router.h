@@ -33,7 +33,7 @@ class LS_Router
 {
     public:
         // Constructor and Destructor
-        LS_Router(int id, char * filename);
+        LS_Router(int id, char * graphFileNamem, char * logFileName);
         ~LS_Router();
 
         // Member Functions
@@ -43,16 +43,17 @@ class LS_Router
         // TODO: Need thread to forward heartbeat and cost
         // TODO: Deal with manager's messages
 
-		// testing function
+        // testing function
 
         // logging function
-		int logToFile(FILE* fp, int log_type, int dest, int nexthop, char* message);
+        int logToFile(int log_type, short int dest, short int nexthop, char * message);
 
     private:
         static int globalNodeID;
 
         // our all-purpose UDP socket, to be bound to 10.1.1.globalNodeID, port 7777
         static int socket_fd;
+        static FILE * logFilePtr;
 
         // last time you heard from each node.
         // TODO: you will want to monitor this in order to realize when a neighbor has gotten cut off from you.

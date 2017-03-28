@@ -65,6 +65,8 @@ Graph::Graph(int id, char * filename)
 
         free(cur_link);
     }
+
+    fclose(fp);
 }
 
 Graph & Graph::operator=(Graph & other)

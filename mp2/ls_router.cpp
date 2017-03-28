@@ -9,13 +9,13 @@ struct sockaddr_in LS_Router::globalNodeAddrs[NUM_NODES];
 Graph LS_Router::network;
 vector<int> LS_Router::forwardingTable;
 
-LS_Router::LS_Router(int id, char * filename)
+LS_Router::LS_Router(int id, char * graphFileName, char * logFileName)
 {
     char myAddr[100];
     struct sockaddr_in bindAddr;
 
     // initialize graph
-    Graph temp(id, filename);
+    Graph temp(id, graphFileName);
     network = temp;
 
     globalNodeID = id;
@@ -47,19 +47,27 @@ LS_Router::LS_Router(int id, char * filename)
     inet_pton(AF_INET, myAddr, &bindAddr.sin_addr); // writing addr to sin_addr
 
     // need to bind so we can listen through this socket
-    if(bind(socket_fd, (struct sockaddr*)&bindAddr, sizeof(struct sockaddr_in)) < 0)
-    {
+    if(bind(socket_fd, (struct sockaddr*)&bindAddr, sizeof(struct sockaddr_in)) < 0) {
         perror("bind");
         close(socket_fd);
         exit(1);
     }
 
+    // initialize the forwarding table
     forwardingTable.resize(NUM_NODES, INVALID);
+
+    // initialize file pointer
+    if((logFilePtr = fopen(logFileName, "w")) == NULL){
+        perror("fopen");
+        close(socket_fd);
+        exit(1);
+    }
 }
 
 LS_Router::~LS_Router()
 {
     close(socket_fd);
+    fclose(logFilePtr);
 }
 
 
@@ -137,9 +145,10 @@ void LS_Router::listenForNeighbors()
                 sendto(socket_fd, recvBuf, SEND_SIZE, 0, 
                         (struct sockaddr*)&globalNodeAddrs[nextNode], 
                         sizeof(globalNodeAddrs[nextNode]));
-                // TODO: Log send
+                recvBuf[106] = '\0'; 
+                logToFile(SEND_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
-                // TODO: Log unreachable
+                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
             }
                 
 
@@ -168,47 +177,40 @@ void LS_Router::listenForNeighbors()
  * The message can be one of four types, as defined in ls_router.h
  * Return value: 0 on success, -1 on failure
  */
-int LS_Router::logToFile(FILE* fp, int log_type, int dest, int nexthop, char* message)
+int LS_Router::logToFile(int log_type, short int dest, short int nexthop, char* message)
 {
-	// Argument check
-	if(fp == NULL)
-	{
-		perror("logToFile: invalid file pointer\n");
-		return -1;
-	}
+    char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
-	char logLine[256]; // Message is <= 100 bytes, so this is always enough
+    // Determine the logLine to write based on the message type
+    switch(log_type)
+    {
+        case FORWARD_MES:
+            sprintf(logLine, "forward packet dest %d nexthop %d message %s\n",
+                                                        dest, nexthop, message);
+            break;
+        case SEND_MES:
+            sprintf(logLine, "send packet dest %d nexthop %d message %s\n", 
+                                                        dest, nexthop, message);
+            break;
+        case RECV_MES:
+            sprintf(logLine, "receive packet message %s\n", message);
+            break;
+        case UNREACHABLE_MES:
+            sprintf(logLine, "unreachable dest %d\n", dest);
+            break;
+        default: // Should never happen
+            perror("logToFile: invalid log_type\n");
+            return -1;
+    }
 
-	// Determine the logLine to write based on the message type
-	switch(log_type)
-	{
-		case FORWARD_MES:
-			sprintf(logLine, "forward packet dest %d nexthop %d message %s\n",
-								dest, nexthop, message);
-			break;
-		case SEND_MES:
-			sprintf(logLine, "send packet dest %d nexthop %d message %s\n", 
-								dest, nexthop, message);
-			break;
-		case RECV_MES:
-			sprintf(logLine, "receive packet message %s\n", message);
-			break;
-		case UNREACHABLE_MES:
-			sprintf(logLine, "unreachable dest %d\n", dest);
-			break;
-		default: // Should never happen
-			perror("logToFile: invalid log_type\n");
-			return -1;
-	}
+    // Write to logFile
+    if(fwrite(logLine, 1, strlen(logLine), logFilePtr) != strlen(logLine))
+    {
+            fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
+            return -1;
+    }
 
-	// Write to logFile
-	if(fwrite(logLine, 1, strlen(logLine), fp) != strlen(logLine))
-	{
-		fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
-		return -1;
-	}
-
-	return 0;
+    return 0;
 }
 
 
