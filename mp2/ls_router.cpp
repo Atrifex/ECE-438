@@ -157,3 +157,54 @@ void LS_Router::listenForNeighbors()
         // ...
     }
 }
+
+/*
+ * int logToFile()
+ * Logs a message to an open file specified by file pointer fp.
+ * The message can be one of four types, as defined in ls_router.h
+ * Return value: 0 on success, -1 on failure
+ */
+int LS_Router::logToFile(FILE* fp, int log_type, int dest, int nexthop, char* message)
+{
+	// Argument check
+	if(fp == NULL)
+	{
+		perror("logToFile: invalid file pointer\n");
+		return -1;
+	}
+
+	char logLine[256]; // Message is <= 100 bytes, so this is always enough
+
+	// Determine the logLine to write based on the message type
+	switch(log_type)
+	{
+		case FORWARD_MES:
+			sprintf(logLine, "forward packet dest %d nexthop %d message %s\n",
+								dest, nexthop, message);
+			break;
+		case SEND_MES:
+			sprintf(logLine, "send packet dest %d nexthop %d message %s\n", 
+								dest, nexthop, message);
+			break;
+		case RECV_MES:
+			sprintf(logLine, "receive packet message %s\n", message);
+			break;
+		case UNREACHABLE_MES:
+			sprintf(logLine, "unreachable dest %d\n", dest);
+			break;
+		default: // Should never happen
+			perror("logToFile: invalid log_type\n");
+			return -1;
+	}
+
+	// Write to logFile
+	if(fwrite(logLine, 1, strlen(logLine), fp) != strlen(logLine))
+	{
+		fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+
