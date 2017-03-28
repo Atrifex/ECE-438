@@ -4,6 +4,7 @@
 // Instances of static members
 int LS_Router::globalNodeID;
 int LS_Router::socket_fd;
+FILE * LS_Router::logFilePtr;
 struct timeval LS_Router::globalLastHeartbeat[NUM_NODES];
 struct sockaddr_in LS_Router::globalNodeAddrs[NUM_NODES];
 Graph LS_Router::network;
