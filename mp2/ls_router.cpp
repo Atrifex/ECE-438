@@ -101,6 +101,32 @@ void * LS_Router::announcer(void * arg)
     return arg;
 }
 
+void LS_Router::checkHeartBeat()
+{
+    struct timeval tv, tv_heart;
+    gettimeofday(&tv, 0);
+
+    long int cur_time = (tv.tv_sec - tv.tv_sec)*1000000 + tv.tv_usec - tv.tv_usec;
+    long int lastHeartbeat_usec;
+    for(int i = 0; i < NUM_NODES; i++)
+    {
+        if(forwardingTable[i] != INVALID)
+        {
+            tv_heart = globalLastHeartbeat[i];
+            lastHeartbeat_usec = (tv_heart.tv_sec - tv_heart.tv_sec)*1000000 + tv_heart.tv_usec - tv_heart.tv_usec;
+
+            if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
+            {
+                network.updateLink(false, globalNodeID, i);
+                network.updateLink(false, i, globalNodeID);
+                updateForwardingTable();
+                
+                // TODO: LSP Packet
+            }
+        }
+    }
+}
+
 void LS_Router::listenForNeighbors()
 {
     char fromAddr[100];
@@ -108,11 +134,10 @@ void LS_Router::listenForNeighbors()
     socklen_t senderAddrLen;
     unsigned char recvBuf[1000];
 
-    memset(recvBuf, 0, 1000);
-
     int bytesRecvd;
     while(1)
     {
+        memset(recvBuf, 0, 1000);
         senderAddrLen = sizeof(senderAddr);
         if ((bytesRecvd = recvfrom(socket_fd, recvBuf, 1000 , 0,
                 (struct sockaddr*)&senderAddr, &senderAddrLen)) == -1) {
@@ -131,7 +156,7 @@ void LS_Router::listenForNeighbors()
             if(network.getLinkCost(globalNodeID, heardFromNode) == INVALID){
                 network.updateLink(true, globalNodeID, heardFromNode);
                 network.updateLink(true, heardFromNode, globalNodeID);
-                forwardingTable[heardFromNode] = network.dijkstraGetNextNode(heardFromNode);
+                updateForwardingTable();
             }
             
             //record that we heard from heardFromNode just now.
@@ -143,7 +168,14 @@ void LS_Router::listenForNeighbors()
         if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
             destID = ntohs(((short int*)recvBuf)[2]);
 
+            // sending to next hop
             if((nextNode = forwardingTable[destID]) != INVALID) {
+
+                recvBuf[0] = 'f';
+                recvBuf[1] = 'o';
+                recvBuf[2] = 'r';
+                recvBuf[3] = 'w';
+
                 sendto(socket_fd, recvBuf, SEND_SIZE, 0, 
                         (struct sockaddr*)&globalNodeAddrs[nextNode], 
                         sizeof(globalNodeAddrs[nextNode]));
@@ -153,24 +185,62 @@ void LS_Router::listenForNeighbors()
                 logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
             }
                 
+        } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
+            destID = ntohs(((short int*)recvBuf)[2]);
+            
+            if(destID == globalNodeID){
+                recvBuf[106] = '\0'; 
+                logToFile(RECV_MES, destID, nextNode, (char *)recvBuf + 6);
+                continue;
+            }
+
+            if((nextNode = forwardingTable[destID]) != INVALID) {
+                sendto(socket_fd, recvBuf, SEND_SIZE, 0, 
+                        (struct sockaddr*)&globalNodeAddrs[nextNode], 
+                        sizeof(globalNodeAddrs[nextNode]));
+                recvBuf[106] = '\0'; 
+                logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
+            } else{
+                // TODO: Think about convergence, ask TA/Prof
+                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
+            }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
-            //TODO record the cost change (remember, the link might currently be down! in that case,
-            //this is the new cost you should treat it as having once it comes back up.)
-            // ...
             destID = ntohs(((short int*)recvBuf)[2]);
             network.updateLink(ntohs(*((int*)&(((char*)recvBuf)[6]))), globalNodeID, destID);
 
-            // TODO: perform Dijkstra
-
+            if(network.getLinkCost(globalNodeID, heardFromNode) != INVALID){
+                updateForwardingTable();
+            }
 
         }
 
-        //TODO now check for the various types of packets you use in your own protocol
-        //else if(!strncmp(recvBuf, "your other message types", ))
-        // ...
+        checkHeartBeat();
+
+        //TODO: LSP packets
     }
+}
+
+void LS_Router::updateForwardingTable()
+{
+
+    vector<int> predecessor = network.dijkstra();
+
+    for(int i = 0; i < NUM_NODES; i++){
+        if(predecessor[i] == INVALID){
+            forwardingTable[i] = INVALID;
+            continue;
+        }
+
+        int nextNode = i;
+        while(predecessor[nextNode] != globalNodeID)
+            nextNode = predecessor[nextNode];
+
+        forwardingTable[i] = nextNode;
+    }
+
+    return;
 }
 
 /*

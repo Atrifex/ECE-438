@@ -10,10 +10,12 @@ int main(int argc, char** argv)
 
     /*
      * TODO:
-     *      1) look at heartbeats (Whoever gets here first)
+     *      1) Test heartbeats and fixed Dijkstra
      *      2) send lsp (together)
      *          - avoid flooding
      *          - might require using variation of lsp
+     *          - Need to figure out where to send --> what function
+     *          - Need to send on ANY change
      */
 
     // Parse input and initialize router

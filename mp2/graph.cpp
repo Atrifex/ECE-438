@@ -110,7 +110,7 @@ void Graph::getNeighbors(int nodeID, vector<int> & neighbors)
     }
 }
 
-int Graph::dijkstraGetNextNode(int to)
+vector<int> Graph::dijkstra()
 {
     priority_queue< int_pair, vector<int_pair>, greater<int_pair> > pq;
     vector<int> distance(NUM_NODES, numeric_limits<int>::max());
@@ -142,13 +142,7 @@ int Graph::dijkstraGetNextNode(int to)
         }
     }
 
-    if(predecessor[to] == INVALID) return INVALID;
-
-    int nextNode = to;
-    while(predecessor[nextNode] != globalNodeID)
-        nextNode = predecessor[nextNode];
-
-    return nextNode;
+    return predecessor;
 }
 
 stack<int> Graph::dijkstraTest(int to)

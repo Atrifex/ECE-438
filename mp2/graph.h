@@ -45,7 +45,7 @@ class Graph
 
         // Member Functions
         void getNeighbors(int nodeID, vector<int> & neighbors);
-        int dijkstraGetNextNode(int to);
+        vector<int> dijkstra();
 
         // testing function
         void display();
