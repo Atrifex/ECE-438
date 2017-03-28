@@ -35,8 +35,7 @@ LS_Router::LS_Router(int id, char * filename)
     }
 
     //socket() and bind() our socket. We will do all sendto()ing and recvfrom()ing on this one.
-    if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-    {
+    if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");
         exit(1);
     }
@@ -69,8 +68,7 @@ void LS_Router::hackyBroadcast(const char* buf, int length)
     int i;
     for(i=0;i<NUM_NODES;i++){
         if(i != globalNodeID){
-            sendto(socket_fd, buf, length, 0,
-                (struct sockaddr*)&globalNodeAddrs[i], sizeof(globalNodeAddrs[i]));
+            sendto(socket_fd, buf, length, 0, (struct sockaddr*)&globalNodeAddrs[i], sizeof(globalNodeAddrs[i]));
         }
     }
 }
@@ -130,14 +128,20 @@ void LS_Router::listenForNeighbors()
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
         }
 
-        short int destID;
+        short int destID, nextNode;
         // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
         if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
             destID = ntohs(((short int*)recvBuf)[2]);
 
-            // TODO: lookup in forwarding table. If invalid, then do nothing.
-            // TODO: send the requested message to the requested destination node
-            
+            if((nextNode = forwardingTable[destID]) != INVALID) {
+                sendto(socket_fd, recvBuf, SEND_SIZE, 0, 
+                        (struct sockaddr*)&globalNodeAddrs[nextNode], 
+                        sizeof(globalNodeAddrs[nextNode]));
+                // TODO: Log send
+            } else{
+                // TODO: Log unreachable
+            }
+                
 
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>

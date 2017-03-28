@@ -21,6 +21,7 @@
 #include "graph.h"
 
 #define GLOBAL_COM_PORT 7777
+#define SEND_SIZE 106
 
 class LS_Router
 {
