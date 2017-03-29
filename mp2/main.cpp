@@ -1,5 +1,19 @@
 
+
+#include <iostream>
+#include <utility>
+#include <thread>
+#include <chrono>
+#include <functional>
+#include <atomic>
 #include "ls_router.h"
+
+using std::thread;
+using std::ref;
+
+void announceToNeighbors(LS_Router & router) {
+    router.announceToNeighbors();
+}
 
 int main(int argc, char** argv)
 {
@@ -22,7 +36,7 @@ int main(int argc, char** argv)
     LS_Router router(atoi(argv[1]), argv[2], argv[3]);
 
     // start announcing
-    router.announceToNeighbors();
+    thread announcer(announceToNeighbors, ref(router));
 
     // start listening
     router.listenForNeighbors();
