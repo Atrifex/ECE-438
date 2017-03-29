@@ -10,6 +10,7 @@
 #include <queue>
 #include <stack>
 #include <utility>
+#include <string>
 
 #define NUM_NODES 256
 #define INIT_COST 1
@@ -25,6 +26,8 @@ using std::make_pair;
 using std::greater;
 using std::queue;
 using std::stack;
+using std::string;
+using std::to_string;
 
 // pairs are stored as <distance, nodeID>
 typedef pair<int,int> int_pair;
@@ -50,10 +53,11 @@ class Graph
 
         // testing function
         void display();
+        void writeToFile();
         stack<int> dijkstraTest(int to);
 
     private:
-        int globalNodeID;
+        int myNodeID;
 
         // NOTE: vectors are indexed [From][To]
         vector< vector<bool> > valid;

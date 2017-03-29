@@ -3,7 +3,7 @@
 
 Graph::Graph()
 {
-    globalNodeID = 0;
+    myNodeID = 0;
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
 }
@@ -16,7 +16,7 @@ Graph::Graph(int id, char * filename)
     char * initialcostsfile = filename;
     FILE * fp = fopen(initialcostsfile, "r");
 
-    globalNodeID = id;
+    myNodeID = id;
 
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
@@ -60,7 +60,7 @@ Graph::Graph(int id, char * filename)
                 int node_to = atoi(cur_node);
                 int cost_to = atoi(cur_cost);
 
-                cost[globalNodeID][node_to] = cost_to;
+                cost[myNodeID][node_to] = cost_to;
         }
 
         free(cur_link);
@@ -73,7 +73,7 @@ Graph & Graph::operator=(Graph & other)
 {
     if(this != &other)
     {
-        globalNodeID = other.globalNodeID;
+        myNodeID = other.myNodeID;
         valid = other.valid;
         cost = other.cost;
     }
@@ -123,8 +123,8 @@ vector<int> Graph::dijkstra()
     vector<int> predecessor(NUM_NODES, INVALID);
 
     // initialize vectors
-    distance[globalNodeID] = 0;
-    pq.push(make_pair(0, globalNodeID));
+    distance[myNodeID] = 0;
+    pq.push(make_pair(0, myNodeID));
 
     while(!pq.empty()){
 
@@ -159,8 +159,8 @@ stack<int> Graph::dijkstraTest(int to)
     stack<int> path;
 
     // initialize vectors
-    distance[globalNodeID] = 0;
-    pq.push(make_pair(0, globalNodeID));
+    distance[myNodeID] = 0;
+    pq.push(make_pair(0, myNodeID));
 
     while(!pq.empty()){
 
@@ -187,7 +187,7 @@ stack<int> Graph::dijkstraTest(int to)
     if(predecessor[to] == INVALID) return path;
 
     int nextNode = to;
-    while(nextNode != globalNodeID)
+    while(nextNode != myNodeID)
     {
         path.push(nextNode);
         nextNode = predecessor[nextNode];
@@ -199,15 +199,56 @@ stack<int> Graph::dijkstraTest(int to)
 
 void Graph::display()
 {
-    for (int i = 0; i < NUM_NODES; i++)
-    {
-        cout << "Node: " << i << endl;
-        for (int j = 0; j < NUM_NODES; j++)
-        {
-            if(valid[i][j] == true)
-            {
-                cout << "   ->" << j << ", cost = " << cost[i][j] << endl;
+    vector<int> links;
+
+    for (int i = 0; i < NUM_NODES; i++) {
+        links.clear();
+        for (int j = 0; j < NUM_NODES; j++){
+            if(valid[i][j] == true){
+                links.push_back(j);
             }
         }
+
+        if(!links.empty())
+            cout << "Node: " << i << endl;
+
+        for (size_t j = 0; j < links.size(); j++) {
+            cout << "   ->" << j << ", cost = " << cost[i][links[j]] << endl;
+        }
     }
+}
+
+void Graph::writeToFile()
+{
+    vector<int> links;
+
+    FILE * graphOutFile;
+
+    string fileName = "./logfiles/graph";
+    fileName += to_string(myNodeID);
+
+
+
+    if((graphOutFile = fopen(fileName.c_str(),"w")) == NULL){
+        perror("fopen");
+        exit(1);
+    }
+
+    for (int i = 0; i < NUM_NODES; i++) {
+        links.clear();
+        for (int j = 0; j < NUM_NODES; j++){
+            if(valid[i][j] == true){
+                links.push_back(j);
+            }
+        }
+
+        if(!links.empty())
+            fprintf(graphOutFile, "Node: %d\n", i);
+
+        for (size_t j = 0; j < links.size(); j++) {
+            fprintf(graphOutFile, "   -> %d, cost = %d\n", links[j], cost[i][links[j]]);
+        }
+    }
+
+    fclose(graphOutFile);
 }

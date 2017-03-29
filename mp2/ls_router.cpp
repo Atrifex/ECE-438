@@ -109,6 +109,11 @@ void LS_Router::listenForNeighbors()
     unsigned char recvBuf[1000];
 
     int bytesRecvd;
+
+    struct timeval lastGraphUpdate, graphUpdateCheck;
+    gettimeofday(&graphUpdateCheck, 0);
+    lastGraphUpdate = graphUpdateCheck;
+
     while(1)
     {
         memset(recvBuf, 0, 1000);
@@ -221,6 +226,11 @@ void LS_Router::listenForNeighbors()
         }
 
         checkHeartBeat();
+        gettimeofday(&graphUpdateCheck, 0);
+        if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 10) {
+            network.writeToFile();
+            lastGraphUpdate = graphUpdateCheck;
+        }
     }
 }
 
