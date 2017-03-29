@@ -30,4 +30,4 @@ for FILE_NAME in ${INIT_COSTS}; do
     ./ls_router ${NODE_ID} ${FILE_NAME} ./logfiles/log${NODE_ID} &
 done
 
-gdb ./ls_router 255 ../example_topology/test2initcosts255 ./logfiles/log255
+gdb ./ls_router 255 ./example_topology/test2initcosts255 ./logfiles/log255
