@@ -29,7 +29,7 @@ class LS_Router : public Router
 {
     public:
         // Constructor and Destructor
-        LS_Router(int id, char * graphFileNamem, char * logFileName);
+        LS_Router(int id, char * graphFileName, char * logFileName);
 
         // Member Functions
         void listenForNeighbors();
