@@ -12,11 +12,14 @@ class DV_Router : public Router
         // Constructor
         DV_Router(int id, char * initialcostsfile, char * logFileName);
 
+        // Member functions
+        void checkHeartBeat();
+
     private:
        vector<int> costs; // Costs of direct links from node to its neighbors
        vector<bool> valid; // Validity of direct links
        vector<int> distances; // Estimates of shortest distance to other nodes
-       vector<vector<int>> neighborDistances; // Neighbors' distance vectors
+       // vector<vector<int>> neighborDistances; // Neighbors' distance vectors- might not need
 };
 
 

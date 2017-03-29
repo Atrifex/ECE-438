@@ -65,6 +65,45 @@ DV_Router::DV_Router(int id, char * initialcostsfile, char * logFileName) : Rout
     distances[id] = 0; // Distance to ourself is 0
 
     // We don't know our neighbors, so we can't yet store neighbor distance vectors.
-    neighborDistances.resize(NUM_NODES, vector<int>());
+    //neighborDistances.resize(NUM_NODES, vector<int>());
 }
+
+void DV_Router::checkHeartBeat()
+{
+    vector<int> neighbors;
+    struct timeval tv, tv_heart;
+    gettimeofday(&tv, 0);
+
+    long int cur_time = tv.tv_sec*1000000 + tv.tv_usec;
+    long int lastHeartbeat_usec;
+
+    // Get our neighbors
+    for(int i = 0; i < NUM_NODES; i++)
+    {
+        if(valid[i] && (i != myNodeID))
+            neighbors.push_back(i);
+    }
+
+    for(size_t i = 0; i < neighbors.size(); i++)
+    {
+        int nextNode = neighbors[i];
+        if(forwardingTable[nextNode] != INVALID)
+        {
+            tv_heart = globalLastHeartbeat[nextNode];
+            lastHeartbeat_usec = tv_heart.tv_sec*1000000 + tv_heart.tv_usec;
+
+            if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
+            {
+                valid[nextNode] = false;
+                distances[nextNode] = INFINITY;  
+                // updateForwardingTable(); // Can't do this without neighbor's info
+                // TODO: send DV update packet to other neighbors
+            }
+        }
+    }
+}
+
+
+
+
 

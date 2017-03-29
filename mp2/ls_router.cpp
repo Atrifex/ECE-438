@@ -16,7 +16,7 @@ void LS_Router::checkHeartBeat()
     struct timeval tv, tv_heart;
     gettimeofday(&tv, 0);
 
-    long int cur_time = (tv.tv_sec - tv.tv_sec)*1000000 + tv.tv_usec - tv.tv_usec;
+    long int cur_time = tv.tv_sec*1000000 + tv.tv_usec;
     long int lastHeartbeat_usec;
 
     network.getNeighbors(myNodeID, neighbors);
@@ -26,7 +26,7 @@ void LS_Router::checkHeartBeat()
         if(forwardingTable[nextNode] != INVALID)
         {
             tv_heart = globalLastHeartbeat[nextNode];
-            lastHeartbeat_usec = (tv_heart.tv_sec - tv_heart.tv_sec)*1000000 + tv_heart.tv_usec - tv_heart.tv_usec;
+            lastHeartbeat_usec = tv_heart.tv_sec*1000000 + tv_heart.tv_usec;
 
             if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
             {
