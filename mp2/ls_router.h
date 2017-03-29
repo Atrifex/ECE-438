@@ -5,6 +5,9 @@
 #include "router.h"
 #include "graph.h"
 
+#define TRUE 1
+#define FALSE 0
+
 typedef struct
 {
     int sourceNode;
@@ -32,7 +35,8 @@ class LS_Router : public Router
         void listenForNeighbors();
         void updateForwardingTable();
         void checkHeartBeat();
-        void sendLSPL(LSPL_t * linkState, int heardFromNode);
+        void generateLSPL(int sourceNode, int destNode);
+        void forwardLSPL(char * LSPL_Buf, int recvNode);
         void sendLSPU(vector<LSPL_t> & networkState, int destNode);
 
         // LSP:
@@ -45,15 +49,15 @@ class LS_Router : public Router
         //          -
 
     private:
-
         // Functions to convert to an from network order
         LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
         LSPL_t networkToHostLSPL(LSPL_t * networkval);
 
-        inline LSPL_t constructLSPL()
-
         // Graph stores the current network topology
         Graph network;
+
+        // sequence numbers for LSP packets
+        vector<int> seqNums;
 };
 
 

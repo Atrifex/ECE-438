@@ -39,6 +39,7 @@ class Graph
 
         // get and set functions
         int getLinkCost(int from, int to);
+        int getLinkStatus(int from, int to);
         void updateLink(bool status, int from, int to);
         void updateLink(int linkCost, int from, int to);
         void updateLink(bool status, int linkCost, int from, int to);

@@ -6,6 +6,8 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
     // initialize graph
     Graph temp(id, graphFileName);
     network = temp;
+
+    seqNums.resize(NUM_NODES, INVALID);
 }
 
 void LS_Router::checkHeartBeat()
@@ -31,35 +33,45 @@ void LS_Router::checkHeartBeat()
                 network.updateLink(false, myNodeID, nextNode);
                 network.updateLink(false, nextNode, myNodeID);
                 updateForwardingTable();
-
-                // TODO: LSP Packet that we lost connection
+                generateLSPL(nextNode, myNodeID);
             }
         }
     }
 }
 
-void LS_Router::sendLSPL(LSPL_t * linkState, int heardFromNode)
+void LS_Router::generateLSPL(int sourceNode, int destNode)
 {
     vector<int> neighbors;
     network.getNeighbors(myNodeID, neighbors);
 
-    LSPL_t netLSP = hostToNetworkLSPL(linkState);
+    seqNums[myNodeID]++;
+
+    LSPL_t lspl_inst;
+    lspl_inst.producerNode = myNodeID;
+    lspl_inst.sequence_num = seqNums[myNodeID];
+    lspl_inst.updateLink.sourceNode = sourceNode;
+    lspl_inst.updateLink.destNode = destNode;
+    lspl_inst.updateLink.cost = network.getLinkCost(sourceNode, destNode);
+    lspl_inst.updateLink.valid = (int)network.getLinkStatus(sourceNode, destNode);
+
+    LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
 
     for(size_t i = 0; i < neighbors.size(); i++)
     {
         int nextNode = neighbors[i];
-
-        // Don't send back to the node that forwarded us the LSP
-        if(nextNode != heardFromNode && forwardingTable[nextNode] != INVALID)
-        {
-            sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
-                (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
-        }
+        sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+            (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
     }
 }
 
-void LS_Router::sendLSPU(vector<LSPL_t> & networkState, int destNode)
+void LS_Router::forwardLSPL(char * LSPL_Buf, int recvNode){
+
+}
+
+void LS_Router::sendLSPU(int destNode)
 {
+    // TODO: Create Network state here
+
     for(size_t i = 0; i < networkState.size(); i++){
         LSPL_t netLSP = hostToNetworkLSPL(&networkState[i]);
         sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
@@ -96,13 +108,12 @@ void LS_Router::listenForNeighbors()
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
 
             // this node can consider heardFromNode to be directly connected to it; do any such logic now.
-            if(network.getLinkCost(myNodeID, heardFromNode) == INVALID){
+            if(network.getLinkStatus(myNodeID, heardFromNode) == false){
                 network.updateLink(true, myNodeID, heardFromNode);
                 network.updateLink(true, heardFromNode, myNodeID);
                 updateForwardingTable();
 
-                // TODO: Send LSP to all other neighbors
-                sendLSPL();
+                generateLSPL(heardFromNode, myNodeID);
 
                 // TODO: Send LSPU to the heardFromNode
             }
@@ -150,7 +161,6 @@ void LS_Router::listenForNeighbors()
                 logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
                 logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
-                // TODO: Send LSP about the node that you heard from
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
@@ -158,11 +168,17 @@ void LS_Router::listenForNeighbors()
             destID = ntohs(((short int*)recvBuf)[2]);
             network.updateLink(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
 
-            if(network.getLinkCost(myNodeID, heardFromNode) != INVALID){
+            if(network.getLinkStatus(myNodeID, heardFromNode) == true){
                 updateForwardingTable();
-                // TODO: Send LSP about the node that you heard from
+                generateLSPL(heardFromNode, myNodeID);
             }
 
+        } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
+            if(bytesRecvd != sizeof(LSPL_t)){
+                perror("incorrect bytes received for LSPL_t");
+             } else{
+                // TODO: Forwarding LSPL
+             }
         }
 
         checkHeartBeat();
