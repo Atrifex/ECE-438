@@ -283,6 +283,26 @@ void LS_Router::checkHeartBeat()
 
 }
 
+void LS_Router::sendLSP(LSP_t * val, int heardFromNode)
+{
+    vector<int> neighbors;
+    network.getNeighbors(globalNodeID, neighbors);
+
+    LSP_t netLSP = hostToNetworkLSP(val);
+
+    for(size_t i = 0; i < neighbors.size(); i++)
+    {
+        int nextNode = neighbors[i];
+
+        // Don't send back to the node that forwarded us the LSP
+        if(nextNode != heardFromNode && forwardingTable[nextNode] != INVALID)
+        {
+            sendto(socket_fd, (char*)&netLSP, sizeof(LSP_t), 0,
+                (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+        }
+    }
+}
+
 void LS_Router::listenForNeighbors()
 {
     char fromAddr[100];
