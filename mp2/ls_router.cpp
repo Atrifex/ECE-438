@@ -30,10 +30,11 @@ void LS_Router::checkHeartBeat()
 
             if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
             {
-                network.updateLink(false, myNodeID, nextNode);
-                network.updateLink(false, nextNode, myNodeID);
+                network.updateStatus(false, myNodeID, nextNode);
+                network.updateStatus(false, nextNode, myNodeID);
                 updateForwardingTable();
                 generateLSPL(nextNode, myNodeID);
+                seqNums[nextNode] = INVALID;
             }
         }
     }
@@ -44,15 +45,13 @@ void LS_Router::generateLSPL(int sourceNode, int destNode)
     vector<int> neighbors;
     network.getNeighbors(myNodeID, neighbors);
 
-    seqNums[myNodeID]++;
-
     LSPL_t lspl_inst;
     lspl_inst.producerNode = myNodeID;
-    lspl_inst.sequence_num = seqNums[myNodeID];
-    lspl_inst.updateLink.sourceNode = sourceNode;
-    lspl_inst.updateLink.destNode = destNode;
-    lspl_inst.updateLink.cost = network.getLinkCost(sourceNode, destNode);
-    lspl_inst.updateLink.valid = (int)network.getLinkStatus(sourceNode, destNode);
+    lspl_inst.sequence_num = ++seqNums[myNodeID];
+    lspl_inst.updatedLink.sourceNode = sourceNode;
+    lspl_inst.updatedLink.destNode = destNode;
+    lspl_inst.updatedLink.cost = network.getLinkCost(sourceNode, destNode);
+    lspl_inst.updatedLink.valid = (int)network.getLinkStatus(sourceNode, destNode);
 
     LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
 
@@ -64,18 +63,41 @@ void LS_Router::generateLSPL(int sourceNode, int destNode)
     }
 }
 
-void LS_Router::forwardLSPL(char * LSPL_Buf, int recvNode){
+void LS_Router::forwardLSPL(char * LSPL_Buf, int heardFromNode)
+{
+    vector<int> neighbors;
+    network.getNeighbors(myNodeID, neighbors);
 
+    for(size_t i = 0; i < neighbors.size(); i++)
+    {
+        int nextNode = neighbors[i];
+
+        if(nextNode != heardFromNode){
+            sendto(sockfd, LSPL_Buf, sizeof(LSPL_t), 0,
+                (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+        }
+    }
 }
 
 void LS_Router::sendLSPU(int destNode)
 {
-    // TODO: Create Network state here
+    LSPL_t lspl_inst, netLSP;
 
-    for(size_t i = 0; i < networkState.size(); i++){
-        LSPL_t netLSP = hostToNetworkLSPL(&networkState[i]);
-        sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
-            (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
+    lspl_inst.producerNode = myNodeID;
+    lspl_inst.updatedLink.valid = TRUE;
+
+    for(int from = 0; from < NUM_NODES; from++){
+        for(int to = 0; to < NUM_NODES; to++){
+            if(network.getLinkStatus(from, to) == true){
+                lspl_inst.sequence_num = ++seqNums[myNodeID];
+                lspl_inst.updatedLink.sourceNode = from;
+                lspl_inst.updatedLink.destNode = to;
+                lspl_inst.updatedLink.cost = network.getLinkCost(from, to);
+                netLSP = hostToNetworkLSPL(&lspl_inst);
+                sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+                    (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
+            }
+        }
     }
 }
 
@@ -109,20 +131,20 @@ void LS_Router::listenForNeighbors()
 
             // this node can consider heardFromNode to be directly connected to it; do any such logic now.
             if(network.getLinkStatus(myNodeID, heardFromNode) == false){
-                network.updateLink(true, myNodeID, heardFromNode);
-                network.updateLink(true, heardFromNode, myNodeID);
+                network.updateStatus(true, myNodeID, heardFromNode);
+                network.updateStatus(true, heardFromNode, myNodeID);
                 updateForwardingTable();
 
                 generateLSPL(heardFromNode, myNodeID);
-
-                // TODO: Send LSPU to the heardFromNode
+                sendLSPU(heardFromNode);
             }
         }
 
         short int destID = 0;
         short int nextNode = 0;
-        // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
         if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
+            // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
+
             destID = ntohs(((short int*)recvBuf)[2]);
 
             // sending to next hop
@@ -143,6 +165,8 @@ void LS_Router::listenForNeighbors()
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
+            // forward format: 'forw'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
+
             destID = ntohs(((short int*)recvBuf)[2]);
 
             // if we are the dest
@@ -166,7 +190,7 @@ void LS_Router::listenForNeighbors()
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
             destID = ntohs(((short int*)recvBuf)[2]);
-            network.updateLink(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
+            network.updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
 
             if(network.getLinkStatus(myNodeID, heardFromNode) == true){
                 updateForwardingTable();
@@ -174,10 +198,25 @@ void LS_Router::listenForNeighbors()
             }
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
+            //'lsp\0'<4 ASCII bytes>, rest of LSPL_t struct
+
             if(bytesRecvd != sizeof(LSPL_t)){
                 perror("incorrect bytes received for LSPL_t");
              } else{
-                // TODO: Forwarding LSPL
+                LSPL_t lsplForward = networkToHostLSPL((LSPL_t *)recvBuf);
+                if(lsplForward.sequence_num > seqNums[lsplForward.producerNode]){
+                    seqNums[lsplForward.producerNode]++;
+
+                    network.updateStatus((bool)lsplForward.updatedLink.valid,
+                        lsplForward.updatedLink.sourceNode,lsplForward.updatedLink.destNode);
+                    network.updateStatus((bool)lsplForward.updatedLink.valid,
+                        lsplForward.updatedLink.destNode, lsplForward.updatedLink.sourceNode);
+
+                    network.updateCost(lsplForward.updatedLink.cost,
+                        lsplForward.updatedLink.sourceNode, lsplForward.updatedLink.destNode);
+                    updateForwardingTable();
+                    forwardLSPL((char *)recvBuf, heardFromNode);
+                }
              }
         }
 

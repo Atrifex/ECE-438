@@ -36,8 +36,8 @@ class LS_Router : public Router
         void updateForwardingTable();
         void checkHeartBeat();
         void generateLSPL(int sourceNode, int destNode);
-        void forwardLSPL(char * LSPL_Buf, int recvNode);
-        void sendLSPU(vector<LSPL_t> & networkState, int destNode);
+        void forwardLSPL(char * LSPL_Buf, int heardFromNode);
+        void sendLSPU(int destNode);
 
         // LSP:
         //      Ideas:

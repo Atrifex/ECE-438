@@ -92,12 +92,12 @@ int Graph::getLinkStatus(int from, int to)
 }
 
 
-void Graph::updateLink(bool status, int from, int to)
+void Graph::updateStatus(bool status, int from, int to)
 {
     valid[from][to] = status;
 }
 
-void Graph::updateLink(int linkCost, int from, int to)
+void Graph::updateCost(int linkCost, int from, int to)
 {
     cost[from][to] = linkCost;
 }
