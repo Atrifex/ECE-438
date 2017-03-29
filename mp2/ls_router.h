@@ -50,6 +50,8 @@ class LS_Router : public Router
         LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
         LSPL_t networkToHostLSPL(LSPL_t * networkval);
 
+        inline LSPL_t constructLSPL()
+
         // Graph stores the current network topology
         Graph network;
 };

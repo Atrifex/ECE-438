@@ -61,7 +61,8 @@ void LS_Router::sendLSPL(LSPL_t * linkState, int heardFromNode)
 void LS_Router::sendLSPU(vector<LSPL_t> & networkState, int destNode)
 {
     for(size_t i = 0; i < networkState.size(); i++){
-        sendto(sockfd, (char*)&networkState[i], sizeof(LSPL_t), 0,
+        LSPL_t netLSP = hostToNetworkLSPL(&networkState[i]);
+        sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
             (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
     }
 }
@@ -100,8 +101,10 @@ void LS_Router::listenForNeighbors()
                 network.updateLink(true, heardFromNode, myNodeID);
                 updateForwardingTable();
 
-                // TODO: Send LSPU to the heardFromNode
                 // TODO: Send LSP to all other neighbors
+                sendLSPL();
+
+                // TODO: Send LSPU to the heardFromNode
             }
         }
 
