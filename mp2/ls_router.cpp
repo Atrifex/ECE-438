@@ -227,7 +227,7 @@ void LS_Router::listenForNeighbors()
 
         checkHeartBeat();
         gettimeofday(&graphUpdateCheck, 0);
-        if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 10) {
+        if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
             network.writeToFile();
             lastGraphUpdate = graphUpdateCheck;
         }
