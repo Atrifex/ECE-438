@@ -12,8 +12,9 @@ TOPO_FILE=${DEFAULT_TOPO_FILE}
 INIT_COSTS=$(find ${TOPO_DIR} -maxdepth 1 -name "${TOPO_FILE_PREFIX}*" -print)
 
 DEBUG_NODE=-1
+DEBUG_NODE_FALG=-1
 
-while getopts ":d:n:a:" opt; do
+while getopts ":n:" opt; do
   case $opt in
     n)
         DEBUG_NODE=${OPTARG}
@@ -43,12 +44,14 @@ echo "Using graphs from ${TOPO_DIR}"
 for FILE_NAME in ${INIT_COSTS}; do
     NODE_ID=${FILE_NAME#*${TOPO_FILE_PREFIX}}
     if [ "${NODE_ID}" -eq "${DEBUG_NODE}" ]; then
+        DEBUG_NODE_FALG=1
         continue
     fi
     ./ls_router ${NODE_ID} ${FILE_NAME} ./logfiles/log${NODE_ID} &
 done
 
 
-if [ "${DEBUG_NODE}" -ne "-1" ]; then
-    gdb ./ls_router ${DEBUG_NODE} ./example_topology/test2initcosts255 ./logfiles/log255
+if [ ${DEBUG_NODE} -ne -1 ] && [ ${DEBUG_NODE_FALG} -eq 1 ]; then
+    gdb --args ./ls_router ${DEBUG_NODE} ./example_topology/test2initcosts${DEBUG_NODE} ./logfiles/log${DEBUG_NODE}
 fi
+
