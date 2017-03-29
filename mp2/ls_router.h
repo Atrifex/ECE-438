@@ -5,6 +5,23 @@
 #include "router.h"
 #include "graph.h"
 
+typedef struct
+{
+    int sourceNode;
+    int destNode;
+    int cost;
+    int valid;
+} Link_t;
+
+typedef struct
+{
+    char header[4] = "lsp";
+    int producerNode;
+    int sequence_num;
+    // struct timespec ttl;
+    Link_t updatedLink;
+} LSPL_t;
+
 class LS_Router : public Router
 {
     public:
@@ -15,12 +32,25 @@ class LS_Router : public Router
         void listenForNeighbors();
         void updateForwardingTable();
         void checkHeartBeat();
+        void sendLSPL(LSPL_t * linkState, int heardFromNode);
+        void sendLSPU(vector<LSPL_t> & networkState, int destNode);
 
-        // TODO: Need thread to check heartbeat threshold, perform Dijkstra if changing from valid to invalid
-        // TODO: Need thread to forward heartbeat and cost
-        // TODO: Deal with manager's messages
+        // LSP:
+        //      Ideas:
+        //          - Have a queue
+        //          - When network change is detected, enqueue the LSP
+        //          - at a fixed time interval dequeue and send
+        //          - when sending, see if change in queue matches graph state
+        //      TODO:
+        //          -
 
     private:
+
+        // Functions to convert to an from network order
+        LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
+        LSPL_t networkToHostLSPL(LSPL_t * networkval);
+
+        // Graph stores the current network topology
         Graph network;
 };
 

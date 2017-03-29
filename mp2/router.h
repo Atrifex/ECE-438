@@ -51,14 +51,14 @@ class Router
         int logToFile(int log_type, short int dest, short int nexthop, char * message);
 
     protected:
+        // broadcasts to all direct neighbors
+        void hackyBroadcast(const char* buf, int length);
+
         // Contains time of last message from a given node
         struct timeval globalLastHeartbeat[NUM_NODES];
 
         // sockaddr for sending on port 7777 to 10.1.1.0 - 255
         struct sockaddr_in globalNodeAddrs[NUM_NODES];
-
-        // broadcasts to all direct neighbors
-        void hackyBroadcast(const char* buf, int length);
 
         // Global Node ID
         int myNodeID;
