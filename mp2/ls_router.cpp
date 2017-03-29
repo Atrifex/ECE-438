@@ -283,12 +283,12 @@ void LS_Router::checkHeartBeat()
 
 }
 
-void LS_Router::sendLSP(LSP_t * val, int heardFromNode)
+void LS_Router::sendLSPL(LSPL_t * val, int heardFromNode)
 {
     vector<int> neighbors;
     network.getNeighbors(globalNodeID, neighbors);
 
-    LSP_t netLSP = hostToNetworkLSP(val);
+    LSPL_t netLSP = hostToNetworkLSPL(val);
 
     for(size_t i = 0; i < neighbors.size(); i++)
     {
@@ -297,10 +297,28 @@ void LS_Router::sendLSP(LSP_t * val, int heardFromNode)
         // Don't send back to the node that forwarded us the LSP
         if(nextNode != heardFromNode && forwardingTable[nextNode] != INVALID)
         {
-            sendto(socket_fd, (char*)&netLSP, sizeof(LSP_t), 0,
+            sendto(socket_fd, (char*)&netLSP, sizeof(LSPL_t), 0,
                 (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
         }
     }
+}
+
+void LS_Router::sendLSPU(LSPU_t * val, int destNode)
+{
+    LSPU_t netLSP = hostToNetworkLSPL(val);
+
+    for(size_t i = 0; i < neighbors.size(); i++)
+    {
+        int nextNode = neighbors[i];
+
+        // Don't send back to the node that forwarded us the LSP
+        if(nextNode != heardFromNode && forwardingTable[nextNode] != INVALID)
+        {
+            sendto(socket_fd, (char*)&netLSP, sizeof(LSPL_t), 0,
+                (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+        }
+    }
+
 }
 
 void LS_Router::listenForNeighbors()
