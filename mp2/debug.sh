@@ -5,11 +5,30 @@ DEFAULT_TOPO_DIR="./example_topology/"
 DEFAULT_TOPO_FILE_PREFIX="test2initcosts"
 DEFAULT_TOPO_FILE="topoexample.txt"
 
-# Command line parameters
-TOPO_DIR=${1:-$DEFAULT_TOPO_DIR}
-TOPO_FILE_PREFIX=${2:-$DEFAULT_TOPO_FILE_PREFIX}
-TOPO_FILE=${3:-$DEFAULT_TOPO_FILE}
+# Command line parameters --> will be same as default for debug purposes
+TOPO_DIR=${DEFAULT_TOPO_DIR}
+TOPO_FILE_PREFIX=${DEFAULT_TOPO_FILE_PREFIX}
+TOPO_FILE=${DEFAULT_TOPO_FILE}
 INIT_COSTS=$(find ${TOPO_DIR} -maxdepth 1 -name "${TOPO_FILE_PREFIX}*" -print)
+
+DEBUG_NODE=-1
+DEBUG_NODE_FALG=-1
+
+while getopts ":n:" opt; do
+  case $opt in
+    n)
+        DEBUG_NODE=${OPTARG}
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        exit 1
+        ;;
+    :)
+        echo "Option -$OPTARG requires an argument." >&2
+        exit 1
+        ;;
+  esac
+done
 
 pkill ls_router
 make clean
@@ -24,10 +43,15 @@ echo "Using graphs from ${TOPO_DIR}"
 
 for FILE_NAME in ${INIT_COSTS}; do
     NODE_ID=${FILE_NAME#*${TOPO_FILE_PREFIX}}
-    if [ "${NODE_ID}" -eq "255" ]; then
+    if [ "${NODE_ID}" -eq "${DEBUG_NODE}" ]; then
+        DEBUG_NODE_FALG=1
         continue
     fi
     ./ls_router ${NODE_ID} ${FILE_NAME} ./logfiles/log${NODE_ID} &
 done
 
-gdb ./ls_router 255 ./example_topology/test2initcosts255 ./logfiles/log255
+
+if [ ${DEBUG_NODE} -ne -1 ] && [ ${DEBUG_NODE_FALG} -eq 1 ]; then
+    gdb --args ./ls_router ${DEBUG_NODE} ./example_topology/test2initcosts${DEBUG_NODE} ./logfiles/log${DEBUG_NODE}
+fi
+
