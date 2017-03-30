@@ -88,7 +88,7 @@ void LS_Router::sendLSPU(int destNode)
 
     for(int from = 0; from < NUM_NODES; from++){
         for(int to = 0; to < NUM_NODES; to++){
-            if(network.getLinkStatus(from, to) == true){
+            if(network.getLinkStatus(from, to) == true && from != destNode){
                 lspl_inst.sequence_num = ++seqNums[myNodeID];
                 lspl_inst.updatedLink.sourceNode = from;
                 lspl_inst.updatedLink.destNode = to;
