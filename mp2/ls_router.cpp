@@ -137,7 +137,6 @@ void LS_Router::listenForNeighbors()
             // this node can consider heardFromNode to be directly connected to it; do any such logic now.
             if(network.getLinkStatus(myNodeID, heardFromNode) == false){
                 network.updateStatus(true, myNodeID, heardFromNode);
-                network.updateStatus(true, heardFromNode, myNodeID);
                 updateForwardingTable();
 
                 generateLSPL(myNodeID, heardFromNode);
@@ -214,8 +213,6 @@ void LS_Router::listenForNeighbors()
 
                     network.updateStatus((bool)lsplForward.updatedLink.valid,
                         lsplForward.updatedLink.sourceNode,lsplForward.updatedLink.destNode);
-                    network.updateStatus((bool)lsplForward.updatedLink.valid,
-                        lsplForward.updatedLink.destNode, lsplForward.updatedLink.sourceNode);
 
                     network.updateCost(lsplForward.updatedLink.cost,
                         lsplForward.updatedLink.sourceNode, lsplForward.updatedLink.destNode);
