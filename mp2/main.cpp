@@ -24,12 +24,9 @@ int main(int argc, char** argv)
 
     /*
      * TODO:
-     *      1) Test heartbeats and fixed Dijkstra
-     *      2) send lsp (together)
-     *          - avoid flooding
-     *          - might require using variation of lsp
-     *          - Need to figure out where to send --> what function
-     *          - Need to send on ANY change
+     *      1) Fix dijkstra's
+     *      2) Make graph generator and test cases
+     *      3) Test large and topologies and complex ones
      */
 
     // Parse input and initialize router

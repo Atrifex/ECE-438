@@ -39,15 +39,6 @@ class LS_Router : public Router
         void forwardLSPL(char * LSPL_Buf, int heardFromNode);
         void sendLSPU(int destNode);
 
-        // LSP:
-        //      Ideas:
-        //          - Have a queue
-        //          - When network change is detected, enqueue the LSP
-        //          - at a fixed time interval dequeue and send
-        //          - when sending, see if change in queue matches graph state
-        //      TODO:
-        //          -
-
     private:
         // Functions to convert to an from network order
         LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
