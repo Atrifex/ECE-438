@@ -33,7 +33,7 @@ void LS_Router::checkHeartBeat()
                 network.updateStatus(false, myNodeID, nextNode);
                 network.updateStatus(false, nextNode, myNodeID);
                 updateForwardingTable();
-                generateLSPL(nextNode, myNodeID);
+                generateLSPL(myNodeID, nextNode);
                 seqNums[nextNode] = INVALID;
             }
         }
@@ -140,7 +140,7 @@ void LS_Router::listenForNeighbors()
                 network.updateStatus(true, heardFromNode, myNodeID);
                 updateForwardingTable();
 
-                generateLSPL(heardFromNode, myNodeID);
+                generateLSPL(myNodeID, heardFromNode);
                 sendLSPU(heardFromNode);
             }
         }
@@ -199,7 +199,7 @@ void LS_Router::listenForNeighbors()
 
             if(network.getLinkStatus(myNodeID, heardFromNode) == true){
                 updateForwardingTable();
-                generateLSPL(heardFromNode, myNodeID);
+                generateLSPL(myNodeID, heardFromNode);
             }
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
