@@ -210,7 +210,7 @@ void LS_Router::listenForNeighbors()
              } else{
                 LSPL_t lsplForward = networkToHostLSPL((LSPL_t *)recvBuf);
                 if(lsplForward.sequence_num > seqNums[lsplForward.producerNode]){
-                    seqNums[lsplForward.producerNode]++;
+                    seqNums[lsplForward.producerNode] = lsplForward.sequence_num;
 
                     network.updateStatus((bool)lsplForward.updatedLink.valid,
                         lsplForward.updatedLink.sourceNode,lsplForward.updatedLink.destNode);
