@@ -5,8 +5,9 @@ You must have networkx, matplotlib>=87.7 for this program to work.
 # Author: Rishi Thakkar (rishirt.us@gmail.com)
 try:
     import matplotlib.pyplot as plt
+    plot_lib=True
 except:
-    raise
+    plot_lib=False
 
 import networkx as nx
 import random
@@ -120,10 +121,6 @@ if os.path.isdir("./topology"):
 os.mkdir("./topology")
 
 ##### Output Files #####
-plt.figure(1,figsize=(10,10))
-nx.draw(G,pos,node_color='#A0CBE2',width=.5,with_labels=True)
-plt.savefig("./topology/networkTopology.png")  # save as png
-
 # Write initial costs to file and create gold topology, grid graph is special case
 edgeList =  open("./topology/networkTopology.txt", 'w')
 goldFile = open("./topology/goldNetwork.txt", 'w')
@@ -143,3 +140,9 @@ else:
             initCostFile.write(str(n[0]*cols + n[1]) + " " + str(G[v][n]['weight']) + "\n")
             goldFile.write("   -> " + str(n[0]*cols + n[1]) + ", cost = " + str(G[v][n]['weight']) + "\n")
             edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
+
+if plot_lib == True:
+    plt.figure(1,figsize=(10,10))
+    nx.draw(G,pos,node_color='#A0CBE2',width=.5,with_labels=True)
+    plt.savefig("./topology/networkTopology.png")  # save as png
+
