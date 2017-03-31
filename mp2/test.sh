@@ -3,9 +3,9 @@ usage(){
         echo "usage: ./test.sh [--help | -h]
                  [--test-default | -t] [--test-generated] [--test-new]
                  [--test-custom <folder> <initcost_prefix> <topofilename>]
-                 [--run-default | -t] [--run-generated] [--run-new]
+                 [--run-default | -r] [--run-generated] [--run-new]
                  [--run-custom <folder> <initcost_prefix> <topofilename>]
-                 [--grade-default | -t] [--grade-generated] [--grade-new]
+                 [--grade-default | -g] [--grade-generated] [--grade-new]
                  [--grade-custom <folder> <initcost_prefix> <topofilename> <gold_out>]
                  [--new-graph | -n] "
 }
