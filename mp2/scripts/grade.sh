@@ -31,5 +31,5 @@ if [ ${TOPO_PASSED} -eq 1 ] && [ ${FILES_EXIST} -eq 1 ]; then
     echo "All output files converged. PASS!"
 else
     echo "Files did not converge. Make sure executable is generating graph* files."
-    echo "FAIL!\n"
+    echo "FAIL!"
 fi
