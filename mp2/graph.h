@@ -16,6 +16,8 @@
 #define INIT_COST 1
 #define INVALID -1
 
+#define DEBUG 0 // Change to 1 to enable debugging messages
+
 using std::cout;
 using std::endl;
 using std::vector;

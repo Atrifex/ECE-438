@@ -99,7 +99,9 @@ void Graph::updateStatus(bool status, int from, int to)
 
 void Graph::updateCost(int linkCost, int from, int to)
 {
+#if DEBUG
     cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
+#endif
     cost[from][to] = linkCost;
 }
 
@@ -141,7 +143,9 @@ vector<int> Graph::dijkstra()
         getNeighbors(nodeID, neighbors);
 
         for(size_t i = 0; i < neighbors.size(); i++) {
-            if(distAbs + cost[nodeID][neighbors[i]] < distance[neighbors[i]]){
+            if(distAbs + cost[nodeID][neighbors[i]] < distance[neighbors[i]]
+                || ((distAbs + cost[nodeID][neighbors[i]] == distance[neighbors[i]])
+                && nodeID < predecessor[neighbors[i]])) {
                 distance[neighbors[i]] = distAbs + cost[nodeID][neighbors[i]];
                 predecessor[neighbors[i]] = nodeID;
                 pq.push(make_pair(distance[neighbors[i]],neighbors[i]));
