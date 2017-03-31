@@ -26,7 +26,7 @@ do
             exit
             ;;
         --test-new)
-            python ./scripts/createTopology.py
+            python ./scripts/generateTopology.py
             python ./scripts/topotest.py ./topology nodecosts networkTopology.txt
             exit
             ;;
@@ -44,7 +44,7 @@ do
             exit
             ;;
         --run-new)
-            python ./scripts/createTopology.py
+            python ./scripts/generateTopology.py
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             exit
             ;;
@@ -66,7 +66,7 @@ do
             exit
             ;;
         --grade-new)
-            python ./scripts/createTopology.py
+            python ./scripts/generateTopology.py
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 7s
             sh ./scripts/grade.sh ./topology/goldNetwork.txt
@@ -80,7 +80,7 @@ do
             shift; shift; shift; shift;
             ;;
         --new-graph | -n)
-            python ./scripts/createTopology.py
+            python ./scripts/generateTopology.py
             exit
             ;;
     esac

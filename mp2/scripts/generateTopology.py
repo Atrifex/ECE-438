@@ -41,6 +41,14 @@ modeDescription += bcolors.WARNING + "Mode 7 - " + bcolors.ENDC + bcolors.OKGREE
 modeDescription += bcolors.WARNING + "Mode 8 - " + bcolors.ENDC + bcolors.OKGREEN + "Wheel Graph" + bcolors.ENDC + "\n"
 modeDescription += bcolors.WARNING + "Mode 9 - " + bcolors.ENDC + bcolors.OKGREEN + "Star Graph" + bcolors.ENDC + "\n"
 modeDescription += bcolors.WARNING + "Mode 10 - " + bcolors.ENDC + bcolors.OKGREEN + "Path Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 11 - " + bcolors.ENDC + bcolors.OKGREEN + "Moebius Kantor Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 12 - " + bcolors.ENDC + bcolors.OKGREEN + "Tutte Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 13 - " + bcolors.ENDC + bcolors.OKGREEN + "Truncated Tetrahedron Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 14 - " + bcolors.ENDC + bcolors.OKGREEN + "Truncated Cube Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 15 - " + bcolors.ENDC + bcolors.OKGREEN + "Sedgewick Maze Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 16 - " + bcolors.ENDC + bcolors.OKGREEN + "Pappus Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 17 - " + bcolors.ENDC + bcolors.OKGREEN + "Bull Graph" + bcolors.ENDC + "\n"
+modeDescription += bcolors.WARNING + "Mode 18 - " + bcolors.ENDC + bcolors.OKGREEN + "Krackhardt Kite Graph" + bcolors.ENDC + "\n"
 print(modeDescription)
 
 ##### Generate Graph #####
@@ -108,6 +116,37 @@ while(1):
         G=nx.path_graph(nodes)
         pos=nx.circular_layout(G)
         break
+    elif mode == 11:
+        G=nx.moebius_kantor_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 12:
+        G=nx.tutte_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 13:
+        G=nx.truncated_tetrahedron_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 14:
+        G=nx.truncated_cube_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 15:
+        G=nx.sedgewick_maze_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 16:
+        G=nx.pappus_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 17:
+        G=nx.bull_graph()
+        pos=nx.spectral_layout(G)
+        break
+    elif mode == 18:
+        G=nx.krackhardt_kite_graph()
+        break
     else:
         print("Please enter a valid number.")
 
@@ -142,7 +181,12 @@ else:
             edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
 
 if plot_lib == True:
-    plt.figure(1,figsize=(10,10))
-    nx.draw(G,pos,node_color='#A0CBE2',width=.5,with_labels=True)
+    plt.figure(1,figsize=(20,20))
+    try:
+        pos
+    except NameError:
+        plt.axis('off')
+        nx.draw_networkx(G,node_color='#A0CBE2',width=.5,with_labels=True, )
+    else:
+        nx.draw(G,pos,node_color='#A0CBE2',width=.5,with_labels=True)
     plt.savefig("./topology/networkTopology.png")  # save as png
-
