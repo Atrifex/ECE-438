@@ -30,10 +30,6 @@ void LS_Router::checkHeartBeat()
 
             if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
             {
-                cout << "Time " << cur_time << " " << lastHeartbeat_usec << endl;
-                cout << "Diff " << cur_time - lastHeartbeat_usec << endl;
-                cout << "Link " << myNodeID << " " << nextNode << " died" << endl;
-                exit(1);
                 network.updateStatus(false, myNodeID, nextNode);
                 network.updateStatus(false, nextNode, myNodeID);
                 updateForwardingTable();
