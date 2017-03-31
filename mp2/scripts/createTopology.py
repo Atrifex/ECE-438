@@ -124,23 +124,22 @@ plt.figure(1,figsize=(10,10))
 nx.draw(G,pos,node_color='#A0CBE2',width=.5,with_labels=True)
 plt.savefig("./topology/networkTopology.png")  # save as png
 
-# Topology for IP tables, grid graph is special case
-if mode != 3:
-    nx.write_edgelist(G,"./topology/networkTopology.txt",data=False)
-else:
-    edgeList =  open("./topology/networkTopology.txt", 'w')
-    for v in G:
-        for n in G.neighbors(v):
-            edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
-
-# Write initial costs to file, grid graph is special case
+# Write initial costs to file and create gold topology, grid graph is special case
+edgeList =  open("./topology/networkTopology.txt", 'w')
+goldFile = open("./topology/goldNetwork.txt", 'w')
 if mode != 3:
     for v in G:
         initCostFile = open("./topology/nodecosts" + str(v), 'w')
+        goldFile.write("Node: " + str(v) + "\n")
         for n in G.neighbors(v):
             initCostFile.write(str(n) + " " + str(G[v][n]['weight']) + "\n")
+            goldFile.write("   -> " + str(n) + ", cost = " + str(G[v][n]['weight']) + "\n")
+            edgeList.write(str(v) + " " + str(n) + "\n")
 else:
     for v in G:
         initCostFile = open("./topology/nodecosts" + str(v[0]*cols + v[1]), 'w')
+        goldFile.write("Node: " + str(v[0]*cols + v[1]) + "\n")
         for n in G.neighbors(v):
             initCostFile.write(str(n[0]*cols + n[1]) + " " + str(G[v][n]['weight']) + "\n")
+            goldFile.write("   -> " + str(n[0]*cols + n[1]) + ", cost = " + str(G[v][n]['weight']) + "\n")
+            edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
