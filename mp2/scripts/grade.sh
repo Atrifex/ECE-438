@@ -29,7 +29,7 @@ for FILE_NAME in ${GRAPH_DISP}; do
     fi
 done
 
-if [ TOPO_PASSED -eq 1 ]; then
+if [ ${TOPO_PASSED} -eq 1 ]; then
     echo "All output files converged. PASS!"
 else
     echo "Files did not converge. FAIL!"
