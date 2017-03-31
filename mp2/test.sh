@@ -40,12 +40,12 @@ do
             exit
             ;;
         --run-generated)
-            sh ./scripts/run.sh ./topology nodecosts ./topology/networkTopology.txt
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             exit
             ;;
         --run-new)
             python ./scripts/createTopology.py
-            sh ./scripts/run.sh ./topology nodecosts ./topology/networkTopology.txt
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             exit
             ;;
         --run-custom)
@@ -60,14 +60,14 @@ do
             exit
             ;;
         --grade-generated) 
-            sh ./scripts/run.sh ./topology nodecosts ./topology/networkTopology.txt
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 7s
             sh ./scripts/grade.sh ./topology/goldNetwork.txt
             exit
             ;;
         --grade-new)
             python ./scripts/createTopology.py
-            sh ./scripts/run.sh ./topology nodecosts ./topology/networkTopology.txt
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 7s
             sh ./scripts/grade.sh ./topology/goldNetwork.txt
             exit
