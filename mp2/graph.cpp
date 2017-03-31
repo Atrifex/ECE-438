@@ -99,7 +99,7 @@ void Graph::updateStatus(bool status, int from, int to)
 
 void Graph::updateCost(int linkCost, int from, int to)
 {
-#if DEBUG
+#ifdef DEBUG
     cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
 #endif
     cost[from][to] = linkCost;

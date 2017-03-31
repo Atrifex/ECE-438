@@ -30,6 +30,10 @@ void LS_Router::checkHeartBeat()
 
             if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD) // Link has died
             {
+                cout << "Time " << cur_time << " " << lastHeartbeat_usec << endl;
+                cout << "Diff " << cur_time - lastHeartbeat_usec << endl;
+                cout << "Link " << myNodeID << " " << nextNode << " died" << endl;
+                exit(1);
                 network.updateStatus(false, myNodeID, nextNode);
                 network.updateStatus(false, nextNode, myNodeID);
                 updateForwardingTable();
@@ -223,7 +227,7 @@ void LS_Router::listenForNeighbors()
         }
 
         checkHeartBeat();
-#if DEBUG
+#ifdef GRADE
         gettimeofday(&graphUpdateCheck, 0);
         if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
             network.writeToFile();

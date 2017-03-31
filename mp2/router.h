@@ -29,7 +29,7 @@
 #define GLOBAL_COM_PORT 7777
 #define SEND_SIZE 106
 
-#define HEARTBEAT_THRESHOLD 700
+#define HEARTBEAT_THRESHOLD 700000
 
 class Router
 {

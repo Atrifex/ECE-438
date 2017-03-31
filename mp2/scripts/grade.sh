@@ -28,8 +28,14 @@ for FILE_NAME in ${GRAPH_DISP}; do
 done
 
 if [ ${TOPO_PASSED} -eq 1 ] && [ ${FILES_EXIST} -eq 1 ]; then
-    echo "All output files converged. PASS!"
+    echo "All output files converged."
+    echo "PASS!"
 else
-    echo "Files did not converge. Make sure executable is generating graph* files."
-    echo "FAIL!"
+    if [ ${FILES_EXIST} -eq 0 ]; then
+        echo "Make sure executable is generating graph* files."
+        echo "NO RESULTS."
+    else 
+        echo "Files did not converge."
+        echo "FAIL!"
+    fi
 fi

@@ -72,12 +72,6 @@ void Router::hackyBroadcast(const char* buf, int length)
     }
 }
 
-// void Router::announceToNeighbors()
-// {
-//     pthread_t announcerThread;
-//     pthread_create(&announcerThread, 0, announcer, (void*)0);
-// }
-
 void Router::announceToNeighbors()
 {
     struct timespec sleepFor;
