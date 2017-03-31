@@ -103,10 +103,11 @@ def find_path_local(topo, source):
 			if topo.edge[last].get(node) is not None:
 				newdist = confirmed[last][0] + topo.edge[last][node]['weight']
 				newdirecthop = confirmed[last][2]
+
 				if newdirecthop == source:
 					newdirecthop = node
 
-				if (newdist == tentative[node][0]) and newdirecthop < tentative[node][2]:
+				if (newdist == tentative[node][0]) and last < tentative[node][1]:
 					tentative[node][0] = newdist
 					tentative[node][1] = last
 					tentative[node][2] = newdirecthop
