@@ -84,14 +84,14 @@ def parse_topo(folder_name, initcost_prefix, topofilename):
 			edges.append([id1, id2])
 	return topo, linkcosts, edges
 
-def find_path(topo, source, target):
+def find_path_local(topo, source):
 	inf = sys.maxint/3
 	tentative = {}
 	confirmed = {}
 	for node in topo.nodes():
-		tentative[node] = [inf, -1]
-	tentative[source] = [0, source]
-	
+		tentative[node] = [inf, -1, -1]
+	tentative[source] = [0, source, source]
+
 	confirmed[source] = tentative.pop(source)
 	last = source
 	while(len(tentative) != 0):
@@ -102,9 +102,20 @@ def find_path(topo, source, target):
 			#if there is edge, maybe update path
 			if topo.edge[last].get(node) is not None:
 				newdist = confirmed[last][0] + topo.edge[last][node]['weight']
-				if newdist < tentative[node][0]:
+				newdirecthop = confirmed[last][2]
+				if newdirecthop == source:
+					newdirecthop = node
+
+				if (newdist == tentative[node][0]) and newdirecthop < tentative[node][2]:
 					tentative[node][0] = newdist
 					tentative[node][1] = last
+					tentative[node][2] = newdirecthop
+				elif newdist < tentative[node][0]:
+					tentative[node][0] = newdist
+					tentative[node][1] = last
+					tentative[node][2] = newdirecthop
+
+
 			#find node to put in confirmed
 			if curr==-1:
 				if tentative[node][0] < inf:
@@ -117,16 +128,24 @@ def find_path(topo, source, target):
 		else:
 			confirmed[curr] = tentative.pop(curr)
 			last = curr
-	#if unreachable
-	if confirmed.get(target) is None:
-		return [source, -1]
-	path = [target]
-	last = target
-	while(last != source):
-		nexthop = confirmed[last][1]
-		path.append(nexthop)
-		last = nexthop
-	path.reverse()
+	nexthops = {}
+	for dest in confirmed.keys():
+		nexthops[dest] = confirmed[dest][2]
+	return nexthops
+
+def find_all_paths(topo):
+	all_nexthops = {}
+	for node in topo.nodes():
+		all_nexthops[node] = find_path_local(topo, node)
+	return all_nexthops
+
+def find_path(all_nexthops, source, target):
+	path = [source]
+	last_visited = source
+	while((last_visited != None) and (last_visited != target)):
+		last_visited = all_nexthops[last_visited].get(target)
+		if last_visited != None:
+			path.append(last_visited)
 	return path
 
 def send_msg_all(channels, fromid):
@@ -162,6 +181,8 @@ def send_msg_all(channels, fromid):
 	return hops
 
 def all_to_all_msg(topo, channels):
+	all_nexthops = find_all_paths(topo)
+
 	nodes = channels.keys()
 	for node1 in nodes:
 		all_hops = send_msg_all(channels, node1)
@@ -169,11 +190,7 @@ def all_to_all_msg(topo, channels):
 			if node1 == node2:
 				continue
 			hops = all_hops[node2]
-			try:
-				#path = nx.dijkstra_path(topo, source=node1, target=node2)
-				path = find_path(topo, source=node1, target=node2)
-			except nx.NetworkXNoPath:
-				path = [node1, -1]
+			path = find_path(all_nexthops, source=node1, target=node2)
 
 			wrong = False
 			for i in range(len(path)-1):
@@ -227,7 +244,7 @@ def main():
 	print "the script works with only undirectional topology and link cost for now"
 	if len(sys.argv) != 4:
 		print "./topotest.py folder initcost_prefix topofilename"
-		print "example: ./topotest.py example_topology test2initcosts topoexample.txt"
+		print "example: ./topotest.py example_topology test2initcosts topoexample.txtju"
 		exit(1)
 
 	folder_name = sys.argv[1]
@@ -242,6 +259,11 @@ def main():
 	compile()
 	setup_network(folder_name, topofilename)
 	channels = run_routers(initcosts.keys(), folder_name, initcost_prefix)
+
+	#test one special cast
+	#special_edges = [[1, 2], [2, 3], [3, 4], [5, 1], [6, 5]]
+	#special_edges = []
+	#del_test_add(topo, channels, special_edges)
 
 	#no failure test
 	#time.sleep(5)

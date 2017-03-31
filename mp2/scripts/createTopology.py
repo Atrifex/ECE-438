@@ -126,9 +126,9 @@ plt.savefig("./topology/networkTopology.png")  # save as png
 
 # Topology for IP tables, grid graph is special case
 if mode != 3:
-    nx.write_edgelist(G,"./topology/networkTopology",data=False)
+    nx.write_edgelist(G,"./topology/networkTopology.txt",data=False)
 else:
-    edgeList =  open("./topology/networkTopology", 'w')
+    edgeList =  open("./topology/networkTopology.txt", 'w')
     for v in G:
         for n in G.neighbors(v):
             edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
@@ -136,11 +136,11 @@ else:
 # Write initial costs to file, grid graph is special case
 if mode != 3:
     for v in G:
-        initCostFile = open("./topology/node" + str(v) + "costs", 'w')
+        initCostFile = open("./topology/nodecosts" + str(v), 'w')
         for n in G.neighbors(v):
             initCostFile.write(str(n) + " " + str(G[v][n]['weight']) + "\n")
 else:
     for v in G:
-        initCostFile = open("./topology/node" + str(v[0]*cols + v[1]) + "costs", 'w')
+        initCostFile = open("./topology/nodecosts" + str(v[0]*cols + v[1]), 'w')
         for n in G.neighbors(v):
             initCostFile.write(str(n[0]*cols + n[1]) + " " + str(G[v][n]['weight']) + "\n")
