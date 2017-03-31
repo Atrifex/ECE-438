@@ -55,3 +55,4 @@ if [ ${DEBUG_NODE} -ne -1 ] && [ ${DEBUG_NODE_FALG} -eq 1 ]; then
     gdb --args ./ls_router ${DEBUG_NODE} ./example_topology/test2initcosts${DEBUG_NODE} ./logfiles/log${DEBUG_NODE}
 fi
 
+echo ""

@@ -20,9 +20,11 @@ mkdir ./logfiles/
 
 perl make_topology.pl ${TOPO_DIR}${TOPO_FILE}
 
-echo "Using graphs from ${TOPO_DIR}"
+echo "\nUsing graphs from ${TOPO_DIR}"
 
 for FILE_NAME in ${INIT_COSTS}; do
     NODE_ID=${FILE_NAME#*${TOPO_FILE_PREFIX}}
     ./ls_router ${NODE_ID} ${FILE_NAME} ./logfiles/log${NODE_ID} &
 done
+
+echo ""
