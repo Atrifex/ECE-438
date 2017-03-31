@@ -2,7 +2,7 @@
 
 # Settings
 DEFAULT_TOPO_DIR="./logfiles/"
-DEFAULT_TOPO_FILE_PREFIX="graph"
+DEFAULT_TOPO_FILE_PREFIX="log"
 
 # Command line parameters
 TOPO_DIR=${DEFAULT_TOPO_DIR}
@@ -18,7 +18,8 @@ echo "Starting grading:"
 
 TOPO_PASSED=1
 for FILE_NAME in ${GRAPH_DISP}; do
-    if ! diff -q "${GOLD_FILE}" "${FILE_NAME}"; then
+    NODE_ID=${FILE_NAME#*${TOPO_FILE_PREFIX}}
+    if ! diff -q "${GOLD_FILE}" "${TOPO_DIR}graph${NODE_ID}"; then
         echo "${FILE_NAME} differs from gold output"
         TOPO_PASSED=0
     fi
