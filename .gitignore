@@ -35,3 +35,5 @@ manager_send
 *.swp
 *.d
 mp2/logfiles/
+mp2/topology
+
