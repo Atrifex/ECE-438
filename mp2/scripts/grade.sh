@@ -11,11 +11,6 @@ GRAPH_DISP=$(find ${TOPO_DIR} -maxdepth 1 -name "${TOPO_FILE_PREFIX}*" -print)
 
 GOLD_FILE=${1:-"./example_topology/goldNetwork.txt"}
 
-if [ ${FILE_END} -eq -1 ]; then
-    echo "Specify node to compare to" 
-    exit 1
-fi
-
 pkill ls_router
 sudo iptables --flush
 
