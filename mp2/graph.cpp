@@ -229,7 +229,7 @@ void Graph::writeToFile()
 
     FILE * graphOutFile;
 
-    string fileName = "./logfiles/graph";
+    string fileName = "./log/graph";
     fileName += to_string(myNodeID);
 
 

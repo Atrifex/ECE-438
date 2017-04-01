@@ -260,8 +260,8 @@ void LS_Router::listenForNeighbors()
         }
 #endif
         gettimeofday(&periodicLSPTime, 0);
-        if(periodicLSPTime.tv_sec >= lastPeriodicLSPTime.tv_sec + 5) {
-            periodicLSPL();
+        if(periodicLSPTime.tv_sec >= lastPeriodicLSPTime.tv_sec + 1) {
+            //periodicLSPL();
             lastPeriodicLSPTime = periodicLSPTime;
         }
     }
