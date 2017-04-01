@@ -103,7 +103,7 @@ int Router::logToFile(int log_type, short int dest, short int nexthop, char* mes
                                                         dest, nexthop, message);
             break;
         case SEND_MES:
-            sprintf(logLine, "send packet dest %d nexthop %d message %s\n",
+            sprintf(logLine, "sending packet dest %d nexthop %d message %s\n",
                                                         dest, nexthop, message);
             break;
         case RECV_MES:
@@ -128,5 +128,3 @@ int Router::logToFile(int log_type, short int dest, short int nexthop, char* mes
 
     return 0;
 }
-
-
