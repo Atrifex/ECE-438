@@ -161,6 +161,8 @@ os.mkdir("./topology")
 
 ##### Output Files #####
 # Write initial costs to file and create gold topology, grid graph is special case
+edgeChecker = {}
+
 edgeList =  open("./topology/networkTopology.txt", 'w')
 goldFile = open("./topology/goldNetwork.txt", 'w')
 if mode != 3:
@@ -170,7 +172,10 @@ if mode != 3:
         for n in G.neighbors(v):
             initCostFile.write(str(n) + " " + str(G[v][n]['weight']) + "\n")
             goldFile.write("   -> " + str(n) + ", cost = " + str(G[v][n]['weight']) + "\n")
-            edgeList.write(str(v) + " " + str(n) + "\n")
+            if v*256 + n not in edgeChecker.keys() and v*256 + n not in edgeChecker.keys():
+                edgeList.write(str(v) + " " + str(n) + "\n")
+                edgeChecker[v*256 + n] = True
+                edgeChecker[n*256 + v] = True
 else:
     for v in G:
         initCostFile = open("./topology/nodecosts" + str(v[0]*cols + v[1]), 'w')
@@ -178,7 +183,10 @@ else:
         for n in G.neighbors(v):
             initCostFile.write(str(n[0]*cols + n[1]) + " " + str(G[v][n]['weight']) + "\n")
             goldFile.write("   -> " + str(n[0]*cols + n[1]) + ", cost = " + str(G[v][n]['weight']) + "\n")
-            edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
+            if ((v[0]*cols + v[1])*256 + n[0]*cols + n[1]) not in edgeChecker.keys() and ((n[0]*cols + n[1])*256 + v[0]*cols + v[1]) not in edgeChecker.keys():
+                edgeList.write(str(v[0]*cols + v[1]) + " " + str(n[0]*cols + n[1]) + "\n")
+                edgeChecker[v*256 + n] = True
+                edgeChecker[n*256 + v] = True
 
 if plot_lib == True:
     plt.figure(1,figsize=(20,20))

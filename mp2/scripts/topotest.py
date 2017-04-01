@@ -36,7 +36,7 @@ def setup_network(folder_name, topofilename):
 def addlink(node1, node2):
 	command1 = "sudo iptables -v -I OUTPUT 1 -s 10.1.1.{} -d 10.1.1.{} -j ACCEPT".format(node1, node2)
 	call(command1, shell=True)
-	
+
 def removelink(node1, node2):
 	command1 = "sudo iptables -v -D OUTPUT -s 10.1.1.{} -d 10.1.1.{} -j ACCEPT".format(node1, node2)
 	call(command1, shell=True)
@@ -44,15 +44,15 @@ def removelink(node1, node2):
 def run_routers(nodes, folder_name, initcost_prefix):
 	channels = {}
 	call("pkill {}".format(executable), shell=True)
-	call("rm -rf ./log", shell=True)
-	call("mkdir log", shell=True)
+	call("rm -rf ./logfiles", shell=True)
+	call("mkdir logflies", shell=True)
 	for node in nodes:
-		call("./{binary} {id} {folder}/{prefix}{id} ./log/log{id} &".format(
-			binary=executable, id=node, folder=folder_name, prefix=initcost_prefix), 
+		call("./{binary} {id} {folder}/{prefix}{id} ./logfiles/log{id} &".format(
+			binary=executable, id=node, folder=folder_name, prefix=initcost_prefix),
 			shell=True)
 	time.sleep(0.3)
 	for node in nodes:
-		sp = Process("tail -f ./log/log{}".format(node), shell=True)
+		sp = Process("tail -f ./logfiles/log{}".format(node), shell=True)
 		channels[node] = sp
 	return channels
 
@@ -225,7 +225,7 @@ def del_test_add(topo, channels, edges):
 		topo.remove_edge(e[1], e[0])
 
 	time.sleep(5)
-	
+
 	print "testing: "
 	all_to_all_msg(topo, channels)
 	print "testing succeed"
@@ -235,7 +235,7 @@ def del_test_add(topo, channels, edges):
 	for e in edges:
 		addlink(e[0], e[1])
 		topo.add_edge(e[0], e[1], weight=weights[i])
-		
+
 		addlink(e[1], e[0])
 		topo.add_edge(e[1], e[0], weight=weights[i+1])
 		i+=2

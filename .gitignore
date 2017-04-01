@@ -36,4 +36,4 @@ manager_send
 *.d
 mp2/logfiles/
 mp2/topology
-
+mp2/scripts/asyncproc.pyc
