@@ -9,10 +9,10 @@ TOPO_DIR=${DEFAULT_TOPO_DIR}
 TOPO_FILE_PREFIX=${DEFAULT_TOPO_FILE_PREFIX}
 GRAPH_DISP=$(find ${TOPO_DIR} -maxdepth 1 -name "${TOPO_FILE_PREFIX}*" -print)
 
-GOLD_FILE=${1:-"./example_topology/goldNetwork.txt"}
+BASE_NODE=${1:-"0"}
 
-# pkill ls_router
-# sudo iptables --flush
+killall ls_router
+sudo iptables --flush
 
 echo "Starting grading:"
 
@@ -21,9 +21,10 @@ FILES_EXIST=0
 for FILE_NAME in ${GRAPH_DISP}; do
     FILES_EXIST=1
     NODE_ID=${FILE_NAME#*${TOPO_FILE_PREFIX}}
-    if ! diff -q "${GOLD_FILE}" "${FILE_NAME}"; then
-        echo "${TOPO_DIR}graph${NODE_ID} differs from gold output"
+    if ! diff -q "${TOPO_DIR}${TOPO_FILE_PREFIX}${BASE_NODE}" "${FILE_NAME}"; then
+        echo "${TOPO_DIR}graph${NODE_ID} differs from base node file"
         TOPO_PASSED=0
+        break
     fi
 done
 

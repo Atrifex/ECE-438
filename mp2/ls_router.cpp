@@ -129,7 +129,7 @@ void LS_Router::updateManager()
     gettimeofday(&updateQueueTime, 0);
     int updateQueueTime_us = updateQueueTime.tv_sec*1000000 + updateQueueTime.tv_usec;
     int lastUpdateQueueTime_us = lastUpdateQueueTime.tv_sec*1000000 + lastUpdateQueueTime.tv_usec;
-    if(updateQueueTime_us - lastUpdateQueueTime_us <= QUEUE_THRESHOLD)
+    if(updateQueueTime_us <= QUEUE_THRESHOLD + lastUpdateQueueTime_us)
         return;
 
     lastUpdateQueueTime = updateQueueTime;
@@ -146,7 +146,7 @@ void LS_Router::updateManager()
     for(i = curElem.second; i < NUM_NODES*NUM_NODES; i++){
         if(counter == PACKETS_PER_LSPU)
             break;
-        if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) != INVALID && (i%NUM_NODES != curElem.first))
+        if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) == true && (i%NUM_NODES != curElem.first))
         {
             generateLSPU(i % NUM_NODES, i/NUM_NODES, curElem.first);
             counter++;
@@ -157,7 +157,7 @@ void LS_Router::updateManager()
 
     if(i < NUM_NODES*NUM_NODES)
     {
-        curElem.second += PACKETS_PER_LSPU;
+        curElem.second = i;
         updateQueue.push(curElem);
     }
 }
@@ -223,7 +223,7 @@ void LS_Router::listenForNeighbors()
                 updateForwardingTable();
 
                 generateLSPL(myNodeID, heardFromNode);
-                // TODO: sendLSPU(heardFromNode);
+                //sendLSPU(heardFromNode);
                 updateQueue.push(make_pair(heardFromNode,0));
             }
         }
@@ -246,7 +246,7 @@ void LS_Router::listenForNeighbors()
                 sendto(sockfd, recvBuf, SEND_SIZE, 0,
                         (struct sockaddr*)&globalNodeAddrs[nextNode],
                         sizeof(globalNodeAddrs[nextNode]));
-                recvBuf[106] = '\0';
+                recvBuf[bytesRecvd] = '\0';
                 logToFile(SEND_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
                 logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
@@ -259,7 +259,7 @@ void LS_Router::listenForNeighbors()
 
             // if we are the dest
             if(destID == myNodeID){
-                recvBuf[106] = '\0';
+                recvBuf[bytesRecvd] = '\0';
                 logToFile(RECV_MES, destID, nextNode, (char *)recvBuf + 6);
                 continue;
             }
@@ -269,7 +269,7 @@ void LS_Router::listenForNeighbors()
                 sendto(sockfd, recvBuf, SEND_SIZE, 0,
                         (struct sockaddr*)&globalNodeAddrs[nextNode],
                         sizeof(globalNodeAddrs[nextNode]));
-                recvBuf[106] = '\0';
+                recvBuf[bytesRecvd] = '\0';
                 logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
                 logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
@@ -307,6 +307,7 @@ void LS_Router::listenForNeighbors()
         }
 
         checkHeartBeat();
+
 #ifdef GRADE
         gettimeofday(&graphUpdateCheck, 0);
         if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {

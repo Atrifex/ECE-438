@@ -8,8 +8,8 @@
 #define TRUE 1
 #define FALSE 0
 
-#define QUEUE_THRESHOLD 300000
-#define PACKETS_PER_LSPU 10
+#define QUEUE_THRESHOLD 50000
+#define PACKETS_PER_LSPU 64
 
 typedef struct
 {

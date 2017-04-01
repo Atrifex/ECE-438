@@ -4,6 +4,7 @@
 Graph::Graph()
 {
     myNodeID = 0;
+    validLinks = 0;
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
 }
@@ -17,6 +18,7 @@ Graph::Graph(int id, char * filename)
     FILE * fp = fopen(initialcostsfile, "r");
 
     myNodeID = id;
+    validLinks = 0;
 
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
@@ -90,7 +92,6 @@ int Graph::getLinkStatus(int from, int to)
 {
     return valid[from][to];
 }
-
 
 void Graph::updateStatus(bool status, int from, int to)
 {

@@ -58,6 +58,7 @@ class Graph
 
     private:
         int myNodeID;
+        unsigned int validLinks;
 
         // NOTE: vectors are indexed [From][To]
         vector< vector<bool> > valid;

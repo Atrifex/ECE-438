@@ -56,20 +56,20 @@ do
         --grade-default | -g)
             sh ./scripts/run.sh
             sleep 5s
-            sh ./scripts/grade.sh
+            sh ./scripts/grade.sh 0
             exit
             ;;
         --grade-generated) 
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 5s
-            sh ./scripts/grade.sh ./topology/goldNetwork.txt
+            sh ./scripts/grade.sh 0
             exit
             ;;
         --grade-new)
             python ./scripts/generateTopology.py
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 5s
-            sh ./scripts/grade.sh ./topology/goldNetwork.txt
+            sh ./scripts/grade.sh 0
             exit
             ;;
         --grade-custom)
