@@ -44,15 +44,15 @@ def removelink(node1, node2):
 def run_routers(nodes, folder_name, initcost_prefix):
 	channels = {}
 	call("pkill {}".format(executable), shell=True)
-	call("rm -rf ./logfiles", shell=True)
-	call("mkdir logflies", shell=True)
+	call("rm -rf ./log", shell=True)
+	call("mkdir log", shell=True)
 	for node in nodes:
-		call("./{binary} {id} {folder}/{prefix}{id} ./logfiles/log{id} &".format(
+		call("./{binary} {id} {folder}/{prefix}{id} ./log/log{id} &".format(
 			binary=executable, id=node, folder=folder_name, prefix=initcost_prefix),
 			shell=True)
 	time.sleep(0.3)
 	for node in nodes:
-		sp = Process("tail -f ./logfiles/log{}".format(node), shell=True)
+		sp = Process("tail -f ./log/log{}".format(node), shell=True)
 		channels[node] = sp
 	return channels
 

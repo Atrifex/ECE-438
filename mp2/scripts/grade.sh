@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Settings
-DEFAULT_TOPO_DIR="./logfiles/"
+DEFAULT_TOPO_DIR="./log/"
 DEFAULT_TOPO_FILE_PREFIX="graph"
 
 # Command line parameters
@@ -34,7 +34,7 @@ else
     if [ ${FILES_EXIST} -eq 0 ]; then
         echo "Make sure executable is generating graph* files."
         echo "NO RESULTS."
-    else 
+    else
         echo "Files did not converge."
         echo "FAIL!"
     fi
