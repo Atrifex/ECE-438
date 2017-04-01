@@ -96,14 +96,132 @@ void DV_Router::checkHeartBeat()
             {
                 valid[nextNode] = false;
                 distances[nextNode] = INFINITY;  
-                // updateForwardingTable(); // Can't do this without neighbor's info
+                // TODO: updateForwardingTable();
                 // TODO: send DV update packet to other neighbors
             }
         }
     }
 }
 
+void DV_Router::listenForNeighbors()
+{
+    char fromAddr[100];
+    struct sockaddr_in senderAddr;
+    socklen_t senderAddrLen;
+    unsigned char recvBuf[1000];
 
+    int bytesRecvd;
+
+    while(1)
+    {
+        memset(recvBuf, 0, 1000);
+        senderAddrLen = sizeof(senderAddr);
+        if ((bytesRecvd = recvfrom(sockfd, recvBuf, 1000 , 0,
+                (struct sockaddr*)&senderAddr, &senderAddrLen)) == -1) {
+            perror("connectivity listener: recvfrom failed");
+            exit(1);
+        }
+
+        inet_ntop(AF_INET, &senderAddr.sin_addr, fromAddr, 100);
+
+        short int heardFromNode = -1;
+        if(strstr(fromAddr, "10.1.1."))
+        {
+            heardFromNode = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
+
+            //record that we heard from heardFromNode just now.
+            gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
+
+            // this node can consider heardFromNode to be directly connected to it; do any such logic now.
+            if(valid[heardFromNode] == false){
+                valid[heardFromNode] = true;
+                // TODO: updateForwardingTable();
+                // TODO: send DV update packet to neighbors, including the new node.
+                // Maybe this should be done periodically?
+            }
+        }
+
+        short int destID = 0;
+        short int nextNode = 0;
+        if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
+            // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
+
+            destID = ntohs(((short int*)recvBuf)[2]);
+
+            // sending to next hop
+            if((nextNode = forwardingTable[destID]) != INVALID) {
+
+                recvBuf[0] = 'f';
+                recvBuf[1] = 'o';
+                recvBuf[2] = 'r';
+                recvBuf[3] = 'w';
+
+                sendto(sockfd, recvBuf, SEND_SIZE, 0,
+                        (struct sockaddr*)&globalNodeAddrs[nextNode],
+                        sizeof(globalNodeAddrs[nextNode]));
+                recvBuf[106] = '\0';
+                logToFile(SEND_MES, destID, nextNode, (char *)recvBuf + 6);
+            } else{
+                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
+            }
+
+        } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
+            // forward format: 'forw'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
+
+            destID = ntohs(((short int*)recvBuf)[2]);
+
+            // if we are the dest
+            if(destID == myNodeID){
+                recvBuf[106] = '\0';
+                logToFile(RECV_MES, destID, nextNode, (char *)recvBuf + 6);
+                continue;
+            }
+
+            // forward if we are not the dest
+            if((nextNode = forwardingTable[destID]) != INVALID) {
+                sendto(sockfd, recvBuf, SEND_SIZE, 0,
+                        (struct sockaddr*)&globalNodeAddrs[nextNode],
+                        sizeof(globalNodeAddrs[nextNode]));
+                recvBuf[106] = '\0';
+                logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
+            } else{
+                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
+            }
+
+        } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
+            //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
+            destID = ntohs(((short int*)recvBuf)[2]);
+            network.updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
+
+            if(network.getLinkStatus(myNodeID, heardFromNode) == true){
+                updateForwardingTable();
+                generateLSPL(myNodeID, heardFromNode);
+            }
+
+        } /*else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
+            //'lsp\0'<4 ASCII bytes>, rest of LSPL_t struct
+
+            if(bytesRecvd != sizeof(LSPL_t)){
+                perror("incorrect bytes received for LSPL_t");
+             } else{
+                LSPL_t lsplForward = networkToHostLSPL((LSPL_t *)recvBuf);
+                if(lsplForward.sequence_num > seqNums[lsplForward.producerNode]){
+                    seqNums[lsplForward.producerNode] = lsplForward.sequence_num;
+
+                    network.updateStatus((bool)lsplForward.updatedLink.valid,
+                        lsplForward.updatedLink.sourceNode,lsplForward.updatedLink.destNode);
+
+                    network.updateCost(lsplForward.updatedLink.cost,
+                        lsplForward.updatedLink.sourceNode, lsplForward.updatedLink.destNode);
+                    updateForwardingTable();
+                    forwardLSPL((char *)recvBuf, heardFromNode);
+                }
+             }
+        }*/ // TODO: Modify this for DV packets
+
+        checkHeartBeat();
+    }
+}
 
 
 

@@ -8,8 +8,9 @@
 #define TRUE 1
 #define FALSE 0
 
-#define QUEUE_THRESHOLD 50000
-#define PACKETS_PER_LSPU 32
+#define QUEUE_THRESHOLD 100000
+#define PACKETS_PER_LSPU 64
+#define LSPS_PER_UPDATE 10
 
 typedef struct
 {
@@ -47,6 +48,7 @@ class LS_Router : public Router
 
         void sendLSPU(int destNode);
         void updateManager();
+        void lspManager();
         void generateLSPU(int linkSource, int linkDest, int destNode);
 
 
@@ -62,7 +64,10 @@ class LS_Router : public Router
 
         // Member variables for update manager
         queue<int_pair> updateQueue;
+        queue<int_pair> LSPQueue;
         struct timeval updateQueueTime, lastUpdateQueueTime;
+        struct timeval LSPQueueTime, lastLSPQueueTime;
+
 };
 
 

@@ -14,6 +14,8 @@ class DV_Router : public Router
 
         // Member functions
         void checkHeartBeat();
+        void listenForNeighbors();
+        void updateForwardingTable();
 
     private:
        vector<int> costs; // Costs of direct links from node to its neighbors
