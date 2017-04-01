@@ -219,8 +219,8 @@ void LS_Router::listenForNeighbors()
             // this node can consider heardFromNode to be directly connected to it; do any such logic now.
             if(network.getLinkStatus(myNodeID, heardFromNode) == false){
                 network.updateStatus(true, myNodeID, heardFromNode);
-
                 generateLSPL(myNodeID, heardFromNode);
+
                 //sendLSPU(heardFromNode);
                 updateQueue.push(make_pair(heardFromNode,0));
             }
@@ -230,11 +230,11 @@ void LS_Router::listenForNeighbors()
         short int nextNode = 0;
         if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
             // send format: 'send'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
-            updateForwardingTable();
 
             destID = ntohs(((short int*)recvBuf)[2]);
 
             // sending to next hop
+            updateForwardingTable();
             if((nextNode = forwardingTable[destID]) != INVALID) {
 
                 recvBuf[0] = 'f';
@@ -253,8 +253,6 @@ void LS_Router::listenForNeighbors()
 
         } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
             // forward format: 'forw'<4 ASCII bytes>, destID<net order 2 byte signed>, <some ASCII message>
-            updateForwardingTable();
-
             destID = ntohs(((short int*)recvBuf)[2]);
 
             // if we are the dest
@@ -263,6 +261,8 @@ void LS_Router::listenForNeighbors()
                 logToFile(RECV_MES, destID, nextNode, (char *)recvBuf + 6);
                 continue;
             }
+
+            updateForwardingTable();
 
             // forward if we are not the dest
             if((nextNode = forwardingTable[destID]) != INVALID) {
