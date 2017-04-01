@@ -63,6 +63,30 @@ void LS_Router::generateLSPL(int sourceNode, int destNode)
     }
 }
 
+void LS_Router::periodicLSPL()
+{
+    vector<int> neighbors;
+    network.getNeighbors(myNodeID, neighbors);
+
+    for(size_t i = 0; i < neighbors.size(); i++){
+        LSPL_t lspl_inst;
+        lspl_inst.producerNode = myNodeID;
+        lspl_inst.sequence_num = ++seqNums[myNodeID];
+        lspl_inst.updatedLink.sourceNode = myNodeID;
+        lspl_inst.updatedLink.destNode = neighbors[i];
+        lspl_inst.updatedLink.cost = network.getLinkCost(myNodeID, neighbors[i]);
+        lspl_inst.updatedLink.valid = (int)network.getLinkStatus(myNodeID, neighbors[i]);
+        LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
+
+        for(size_t i = 0; i < neighbors.size(); i++)
+        {
+            int nextNode = neighbors[i];
+            sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+                (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+        }
+    }
+}
+
 void LS_Router::forwardLSPL(char * LSPL_Buf, int heardFromNode)
 {
     vector<int> neighbors;
@@ -109,6 +133,11 @@ void LS_Router::listenForNeighbors()
     unsigned char recvBuf[1000];
 
     int bytesRecvd;
+
+
+    struct timeval lastPeriodicLSPTime, periodicLSPTime;
+    gettimeofday(&lastPeriodicLSPTime, 0);
+    periodicLSPTime = lastPeriodicLSPTime;
 
     struct timeval lastGraphUpdate, graphUpdateCheck;
     gettimeofday(&graphUpdateCheck, 0);
@@ -230,6 +259,11 @@ void LS_Router::listenForNeighbors()
             lastGraphUpdate = graphUpdateCheck;
         }
 #endif
+        gettimeofday(&periodicLSPTime, 0);
+        if(periodicLSPTime.tv_sec >= lastPeriodicLSPTime.tv_sec + 5) {
+            periodicLSPL();
+            lastPeriodicLSPTime = periodicLSPTime;
+        }
     }
 }
 
@@ -285,4 +319,3 @@ LSPL_t LS_Router::networkToHostLSPL(LSPL_t * networkval)
 
     return ret;
 }
-

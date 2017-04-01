@@ -35,6 +35,7 @@ class LS_Router : public Router
         void listenForNeighbors();
         void updateForwardingTable();
         void checkHeartBeat();
+        void periodicLSPL();
         void generateLSPL(int sourceNode, int destNode);
         void forwardLSPL(char * LSPL_Buf, int heardFromNode);
         void sendLSPU(int destNode);

@@ -1,6 +1,6 @@
 CXX = g++
 LD = g++
-CXXFLAGS = -c -g -std=c++11 -Wall -Wextra -pedantic -D GRADE
+CXXFLAGS = -c -g -std=c++11 -Wall -Wextra -pedantic
 LDFLAGS = -std=c++11 -pthread
 
 all: vec_router ls_router manager_send
