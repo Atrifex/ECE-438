@@ -154,6 +154,13 @@ vector<int> Graph::dijkstra()
         }
     }
 
+    for(size_t i = 0; i < NUM_NODES; i++){
+        if(predecessor[i] == INVALID && i != myNodeID) {
+            for(size_t j = 0; j < NUM_NODES; j++)
+                valid[i][j] = false;
+        }
+    }
+
     return predecessor;
 }
 

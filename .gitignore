@@ -34,6 +34,6 @@ manager_send
 # Random things
 *.swp
 *.d
-mp2/logfiles/
+mp2/log/
 mp2/topology
 mp2/scripts/asyncproc.pyc
