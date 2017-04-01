@@ -134,18 +134,19 @@ void LS_Router::updateManager()
 
     lastUpdateQueueTime = updateQueueTime;
 
-    int_pair curElem = updateQueue.top();
+    int_pair curElem = updateQueue.front();
     while(forwardingTable[curElem.first] == INVALID) {
         updateQueue.pop();
         if(updateQueue.empty()) return;
-        curElem = updateQueue.top();
+        curElem = updateQueue.front();
     }
 
     int counter = 0;
-    for(int i = curElem.second; i < NUM_NODES*NUM_NODES; i++){
+    int i = 0;
+    for(i = curElem.second; i < NUM_NODES*NUM_NODES; i++){
         if(counter == PACKETS_PER_LSPU)
             break;
-        if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) != INVALID && (i%NUM_NODES != destNode))
+        if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) != INVALID && (i%NUM_NODES != curElem.first))
         {
             generateLSPU(i % NUM_NODES, i/NUM_NODES, curElem.first);
             counter++;
