@@ -8,6 +8,9 @@
 #define TRUE 1
 #define FALSE 0
 
+#define QUEUE_THRESHOLD 300000
+#define PACKETS_PER_LSPU 10
+
 typedef struct
 {
     int sourceNode;
@@ -33,14 +36,20 @@ class LS_Router : public Router
 
         // Member Functions
         void listenForNeighbors();
+
+    private:
+        // Private Member functions
         void updateForwardingTable();
         void checkHeartBeat();
         void periodicLSPL();
         void generateLSPL(int sourceNode, int destNode);
         void forwardLSPL(char * LSPL_Buf, int heardFromNode);
-        void sendLSPU(int destNode);
 
-    private:
+        void sendLSPU(int destNode);
+        void updateManager();
+        void generateLSPU(int linkSource, int linkDest, int destNode);
+
+
         // Functions to convert to an from network order
         LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
         LSPL_t networkToHostLSPL(LSPL_t * networkval);
@@ -50,6 +59,10 @@ class LS_Router : public Router
 
         // sequence numbers for LSP packets
         vector<int> seqNums;
+
+        // Member variables for update manager
+        queue<int_pair> updateQueue;
+        struct timeval updateQueueTime, lastUpdateQueueTime;
 };
 
 

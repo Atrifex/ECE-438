@@ -8,6 +8,9 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
     network = temp;
 
     seqNums.resize(NUM_NODES, INVALID);
+
+    gettimeofday(&updateQueueTime, 0);
+    lastUpdateQueueTime = updateQueueTime;
 }
 
 void LS_Router::checkHeartBeat()
@@ -103,6 +106,61 @@ void LS_Router::forwardLSPL(char * LSPL_Buf, int heardFromNode)
     }
 }
 
+void LS_Router::generateLSPU(int linkSource, int linkDest, int destNode)
+{
+    LSPL_t lspl_inst;
+    lspl_inst.producerNode = myNodeID;
+    lspl_inst.sequence_num = ++seqNums[myNodeID];
+    lspl_inst.updatedLink.sourceNode = linkSource;
+    lspl_inst.updatedLink.destNode = linkDest;
+    lspl_inst.updatedLink.cost = network.getLinkCost(linkSource, linkDest);
+    lspl_inst.updatedLink.valid = (int)network.getLinkStatus(linkSource, linkDest);
+    LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
+
+    sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+        (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
+}
+
+
+void LS_Router::updateManager()
+{
+    if(updateQueue.empty()) return;
+
+    gettimeofday(&updateQueueTime, 0);
+    int updateQueueTime_us = updateQueueTime.tv_sec*1000000 + updateQueueTime.tv_usec;
+    int lastUpdateQueueTime_us = lastUpdateQueueTime.tv_sec*1000000 + lastUpdateQueueTime.tv_usec;
+    if(updateQueueTime_us - lastUpdateQueueTime_us <= QUEUE_THRESHOLD)
+        return;
+
+    lastUpdateQueueTime = updateQueueTime;
+
+    int_pair curElem = updateQueue.top();
+    while(forwardingTable[curElem.first] == INVALID) {
+        updateQueue.pop();
+        if(updateQueue.empty()) return;
+        curElem = updateQueue.top();
+    }
+
+    int counter = 0;
+    for(int i = curElem.second; i < NUM_NODES*NUM_NODES; i++){
+        if(counter == PACKETS_PER_LSPU)
+            break;
+        if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) != INVALID && (i%NUM_NODES != destNode))
+        {
+            generateLSPU(i % NUM_NODES, i/NUM_NODES, curElem.first);
+            counter++;
+        }
+    }
+
+    updateQueue.pop();
+
+    if(i < NUM_NODES*NUM_NODES)
+    {
+        curElem.second += PACKETS_PER_LSPU;
+        updateQueue.push(curElem);
+    }
+}
+
 void LS_Router::sendLSPU(int destNode)
 {
     LSPL_t lspl_inst, netLSP;
@@ -134,11 +192,6 @@ void LS_Router::listenForNeighbors()
 
     int bytesRecvd;
 
-
-    struct timeval lastPeriodicLSPTime, periodicLSPTime;
-    gettimeofday(&lastPeriodicLSPTime, 0);
-    periodicLSPTime = lastPeriodicLSPTime;
-
     struct timeval lastGraphUpdate, graphUpdateCheck;
     gettimeofday(&graphUpdateCheck, 0);
     lastGraphUpdate = graphUpdateCheck;
@@ -169,7 +222,8 @@ void LS_Router::listenForNeighbors()
                 updateForwardingTable();
 
                 generateLSPL(myNodeID, heardFromNode);
-                sendLSPU(heardFromNode);
+                // TODO: sendLSPU(heardFromNode);
+                updateQueue.push(make_pair(heardFromNode,0));
             }
         }
 
@@ -259,13 +313,11 @@ void LS_Router::listenForNeighbors()
             lastGraphUpdate = graphUpdateCheck;
         }
 #endif
-        gettimeofday(&periodicLSPTime, 0);
-        if(periodicLSPTime.tv_sec >= lastPeriodicLSPTime.tv_sec + 1) {
-            //periodicLSPL();
-            lastPeriodicLSPTime = periodicLSPTime;
-        }
+
+        updateManager();
     }
 }
+
 
 void LS_Router::updateForwardingTable()
 {
