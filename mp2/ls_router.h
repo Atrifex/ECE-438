@@ -10,21 +10,21 @@
 
 #define QUEUE_THRESHOLD 300000
 #define LSPU_PER_EPOCH 64
-#define LSPL_PER_EPOCH 10
+#define LSP_PER_EPOCH 10
 
 typedef struct {
-    int destNode;
+    int nodeID;
     int cost;
-    int valid;
+    int status;
 } link_t;
 
 typedef struct {
     char header[4] = "lsp";
     // producerNode == source node for links
     int producerNode;
-    int sequence_num;
-    int links;
-    link_t updatedLink;
+    int sequenceNum;
+    int numLinks;
+    link_t links[NUM_NODES];
 } lsp_t;
 
 class LS_Router : public Router
@@ -42,32 +42,21 @@ class LS_Router : public Router
         // Private Member functions
         void updateForwardingTable();
         void checkHeartBeat();
-        void periodicLSPL();
-        void generateLSPL(int sourceNode, int destNode);
-        void forwardLSPL(char * LSPL_Buf, int heardFromNode);
-
-        void sendLSPU(int destNode);
-        void updateManager();
         void lspManager();
-        void generateLSPU(int linkSource, int linkDest, int destNode);
 
+        // Functions to handle LSP
+        void createLSP(lsp_t & lsp, vector<int> & neighbors);
 
-        // Functions to convert to an from network order
-        LSPL_t hostToNetworkLSPL(LSPL_t * hostval);
-        LSPL_t networkToHostLSPL(LSPL_t * networkval);
+        void processLSP(lsp_t & lsp, vector<int> & neighbors);
+
+        void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
 
         // Graph stores the current network topology
         Graph * network;
 
         // sequence numbers for LSP packets
         vector<int> seqNums;
-
-        // Member variables for update manager
-        queue<int_pair> updateQueue;
         queue<link_t> LSPQueue;
-        struct timeval updateQueueTime, lastUpdateQueueTime;
-        struct timeval LSPQueueTime, lastLSPQueueTime;
-
 };
 
 

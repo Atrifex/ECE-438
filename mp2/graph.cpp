@@ -7,6 +7,7 @@ Graph::Graph()
     validLinks = 0;
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
+    changed = false;
 }
 
 Graph::Graph(int id, char * filename)
@@ -95,19 +96,25 @@ int Graph::getLinkStatus(int from, int to)
 
 void Graph::updateStatus(bool status, int from, int to)
 {
+    changed = true;
     valid[from][to] = status;
 }
 
 void Graph::updateCost(int linkCost, int from, int to)
 {
+
 #ifdef DEBUG
     cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
 #endif
+
     cost[from][to] = linkCost;
+    if(valid[from][to] == true)
+        changed = true;
 }
 
 void Graph::updateLink(bool status, int linkCost, int from, int to)
 {
+    changed = true;
     valid[from][to] = status;
     cost[from][to] = linkCost;
 }
