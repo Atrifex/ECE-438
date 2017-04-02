@@ -33,11 +33,7 @@ void LS_Router::checkHeartBeat()
         {
             network.updateStatus(false, myNodeID, nextNode);
             network.updateStatus(false, nextNode, myNodeID);
-            Link_t link;
-            link.sourceNode = myNodeID; link.destNode = nextNode;
-            link.cost = network.getLinkCost(myNodeID, nextNode);
-            link.valid = false;
-            LSPQueue.push(link);
+            generateLSPL(myNodeID, nextNode);
             seqNums[nextNode] = INVALID;
         }
     }
@@ -133,18 +129,15 @@ void LS_Router::lspManager()
 
     lastLSPQueueTime = LSPQueueTime;
 
-    for(int i = 0; i <  LSPL_PER_EPOCH; i++) {
-        Link_t curElem = LSPQueue.front();
+    int_pair curElem = LSPQueue.front();
 
-        if((curElem.cost != network.getLinkCost(curElem.sourceNode, curElem.destNode))
-            || (curElem.valid != network.getLinkStatus(curElem.sourceNode, curElem.destNode))){
-            i--; continue;
-        }
-
-        generateLSPL(curElem.sourceNode, curElem.destNode);
+    for(int i = 0; i <  LSPL_PER_EPOCH; i++)
+    {
+        generateLSPL(curElem.first, curElem.second);
         LSPQueue.pop();
 
         if(LSPQueue.empty()) return;
+        curElem = LSPQueue.front();
     }
 }
 
@@ -247,11 +240,7 @@ void LS_Router::listenForNeighbors()
             if(network.getLinkStatus(myNodeID, heardFromNode) == false){
                 network.updateStatus(true, myNodeID, heardFromNode);
 
-                Link_t link;
-                link.sourceNode = myNodeID; link.destNode = heardFromNode;
-                link.cost = network.getLinkCost(myNodeID, heardFromNode);
-                link.valid = true;
-                LSPQueue.push(link);
+                generateLSPL(myNodeID, heardFromNode);
                 //sendLSPU(heardFromNode);
                 updateQueue.push(make_pair(heardFromNode,0));
             }
@@ -313,11 +302,7 @@ void LS_Router::listenForNeighbors()
             network.updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
 
             if(network.getLinkStatus(myNodeID, heardFromNode) == true){
-                Link_t link;
-                link.sourceNode = myNodeID; link.destNode = heardFromNode;
-                link.cost = network.getLinkCost(myNodeID, heardFromNode);
-                link.valid = true;
-                LSPQueue.push(link);
+                generateLSPL(myNodeID, heardFromNode);
             }
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
@@ -350,7 +335,6 @@ void LS_Router::listenForNeighbors()
         }
 #endif
 
-        lspManager();
         updateManager();
     }
 }

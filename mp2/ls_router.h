@@ -8,7 +8,7 @@
 #define TRUE 1
 #define FALSE 0
 
-#define QUEUE_THRESHOLD 100000
+#define QUEUE_THRESHOLD 300000
 #define LSPU_PER_EPOCH 64
 #define LSPL_PER_EPOCH 10
 
