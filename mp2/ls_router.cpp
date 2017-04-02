@@ -294,8 +294,7 @@ void LS_Router::sendLSPL(LSPL_t * linkState, int heardFromNode)
     {
         int nextNode = neighbors[i];
 
-        // Don't send back to the node that forwarded us the LSP
-        if(nextNode != heardFromNode && forwardingTable[nextNode] != INVALID)
+        if(nextNode != heardFromNode && routingTable[nextNode] != INVALID)
         {
             sendto(socket_fd, (char*)&netLSP, sizeof(LSPL_t), 0,
                 (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
@@ -317,7 +316,7 @@ void LS_Router::listenForNeighbors()
     struct sockaddr_in senderAddr;
     socklen_t senderAddrLen;
     unsigned char recvBuf[1000];
-
+    string logMessage;
     int bytesRecvd;
 
     struct timeval lastGraphUpdate, graphUpdateCheck;
@@ -359,8 +358,7 @@ void LS_Router::listenForNeighbors()
             destID = ntohs(((short int*)recvBuf)[2]);
             updateForwardingTable();
 
-            // sending to next hop
-            if((nextNode = forwardingTable[destID]) != INVALID) {
+            if((nextNode = routingTable[destID]) != INVALID) {
 
                 recvBuf[0] = 'f';
                 recvBuf[1] = 'o';
