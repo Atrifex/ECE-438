@@ -33,7 +33,11 @@ void LS_Router::checkHeartBeat()
         {
             network.updateStatus(false, myNodeID, nextNode);
             network.updateStatus(false, nextNode, myNodeID);
-            generateLSPL(myNodeID, nextNode);
+            Link_t link;
+            link.sourceNode = myNodeID; link.destNode = nextNode;
+            link.cost = network.getLinkCost(myNodeID, nextNode);
+            link.valid = false;
+            LSPQueue.push(link);
             seqNums[nextNode] = INVALID;
         }
     }
@@ -129,15 +133,18 @@ void LS_Router::lspManager()
 
     lastLSPQueueTime = LSPQueueTime;
 
-    int_pair curElem = LSPQueue.front();
+    for(int i = 0; i <  LSPL_PER_EPOCH; i++) {
+        Link_t curElem = LSPQueue.front();
 
-    for(int i = 0; i <  LSPS_PER_UPDATE; i++)
-    {
-        generateLSPL(curElem.first, curElem.second);
+        if((curElem.cost != network.getLinkCost(curElem.sourceNode, curElem.destNode))
+            || (curElem.valid != network.getLinkStatus(curElem.sourceNode, curElem.destNode))){
+            i--; continue;
+        }
+
+        generateLSPL(curElem.sourceNode, curElem.destNode);
         LSPQueue.pop();
 
         if(LSPQueue.empty()) return;
-        curElem = LSPQueue.front();
     }
 }
 
@@ -163,7 +170,7 @@ void LS_Router::updateManager()
     int counter = 0;
     int i = 0;
     for(i = curElem.second; i < NUM_NODES*NUM_NODES; i++){
-        if(counter == PACKETS_PER_LSPU)
+        if(counter == LSPU_PER_EPOCH)
             break;
         if(network.getLinkStatus(i%NUM_NODES, i/NUM_NODES) == true && (i%NUM_NODES != curElem.first))
         {
@@ -240,7 +247,11 @@ void LS_Router::listenForNeighbors()
             if(network.getLinkStatus(myNodeID, heardFromNode) == false){
                 network.updateStatus(true, myNodeID, heardFromNode);
 
-                generateLSPL(myNodeID, heardFromNode);
+                Link_t link;
+                link.sourceNode = myNodeID; link.destNode = heardFromNode;
+                link.cost = network.getLinkCost(myNodeID, heardFromNode);
+                link.valid = true;
+                LSPQueue.push(link);
                 //sendLSPU(heardFromNode);
                 updateQueue.push(make_pair(heardFromNode,0));
             }
@@ -302,7 +313,11 @@ void LS_Router::listenForNeighbors()
             network.updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
 
             if(network.getLinkStatus(myNodeID, heardFromNode) == true){
-                generateLSPL(myNodeID, heardFromNode);
+                Link_t link;
+                link.sourceNode = myNodeID; link.destNode = heardFromNode;
+                link.cost = network.getLinkCost(myNodeID, heardFromNode);
+                link.valid = true;
+                LSPQueue.push(link);
             }
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
@@ -335,6 +350,7 @@ void LS_Router::listenForNeighbors()
         }
 #endif
 
+        lspManager();
         updateManager();
     }
 }

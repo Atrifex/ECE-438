@@ -9,8 +9,8 @@
 #define FALSE 0
 
 #define QUEUE_THRESHOLD 100000
-#define PACKETS_PER_LSPU 64
-#define LSPS_PER_UPDATE 10
+#define LSPU_PER_EPOCH 64
+#define LSPL_PER_EPOCH 10
 
 typedef struct
 {
@@ -64,7 +64,7 @@ class LS_Router : public Router
 
         // Member variables for update manager
         queue<int_pair> updateQueue;
-        queue<int_pair> LSPQueue;
+        queue<Link_t> LSPQueue;
         struct timeval updateQueueTime, lastUpdateQueueTime;
         struct timeval LSPQueueTime, lastLSPQueueTime;
 
