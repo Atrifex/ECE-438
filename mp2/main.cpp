@@ -22,13 +22,6 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    /*
-     * TODO:
-     *      1) Fix dijkstra's
-     *      2) Make graph generator and test cases
-     *      3) Test large and topologies and complex ones
-     */
-
     // Parse input and initialize router
     LS_Router router(atoi(argv[1]), argv[2], argv[3]);
 

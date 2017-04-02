@@ -1,8 +1,7 @@
 
 #include "ls_router.h"
 
-LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName)
-{
+LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName) {
     network = new Graph(id, graphFileName);
     seqNums.resize(NUM_NODES, INVALID);
 }
@@ -18,7 +17,7 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
 
     for(size_t i = 0; i < neighbors.size(); i++){
         lsp.links[i].neighbor = htonl(neighbors[i]);
-        lsp.links[i].cost = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
+        lsp.links[i].weight = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
         lsp.links[i].status = htonl((int)network->getLinkStatus(myNodeID, neighbors[i]));
     }
 
@@ -67,9 +66,9 @@ void LS_Router::processLSP(lsp_t * lspNetwork)
     network->resetNodeInfo(producerNode);
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
-        int cost = ntohl(lspNetwork->links[i].cost);
+        int weight = ntohl(lspNetwork->links[i].weight);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
-        network->updateLink(status, cost, producerNode, neighbor);
+        network->updateLink(status, weight, producerNode, neighbor);
     }
 }
 
