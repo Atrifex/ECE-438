@@ -26,7 +26,7 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
 
 void LS_Router::sendLSP()
 {
-    if(network->getChangeStatus() == false) return;
+    if(network->getClearChangeStatus() == false) return;
 
     lsp_t lsp;
     vector<int> neighbors;
@@ -40,9 +40,6 @@ void LS_Router::sendLSP()
         sendto(sockfd, (char *)&lsp, sizeOfLSP, 0,
             (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
     }
-
-    // NOTE: dont care if there is a race condition
-    network->setChangeStatus(false);
 }
 
 void LS_Router::announceToNeighbors()
