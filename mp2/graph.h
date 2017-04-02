@@ -11,6 +11,7 @@
 #include <stack>
 #include <utility>
 #include <string>
+#include <mutex>
 
 #define NUM_NODES 256
 #define INIT_COST 1
@@ -28,6 +29,7 @@ using std::queue;
 using std::stack;
 using std::string;
 using std::to_string;
+using std::mutex;
 
 // pairs are stored as <distance, nodeID>
 typedef pair<int,int> int_pair;
@@ -68,6 +70,7 @@ class Graph
         vector< vector<int> > cost;
 
         bool changed;
+        mutex statusLock;
 };
 
 

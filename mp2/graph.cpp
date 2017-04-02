@@ -95,16 +95,25 @@ int Graph::getLinkStatus(int from, int to)
 }
 
 bool Graph::getChangeStatus() {
-    return changed;
+    statusLock.lock();
+    bool status = changed;
+    statusLock.unlock();
+
+    return status;
 }
 
 void Graph::setChangeStatus(bool status) {
+    statusLock.lock();
     changed = status;
+    statusLock.unlock();
 }
 
 void Graph::updateStatus(bool status, int from, int to)
 {
+    statusLock.lock();
     changed = true;
+    statusLock.unlock();
+
     valid[from][to] = status;
 }
 
@@ -116,13 +125,19 @@ void Graph::updateCost(int linkCost, int from, int to)
 #endif
 
     cost[from][to] = linkCost;
-    if(valid[from][to] == true)
+    if(valid[from][to] == true){
+        statusLock.lock();
         changed = true;
+        statusLock.unlock();
+    }
 }
 
 void Graph::updateLink(bool status, int linkCost, int from, int to)
 {
+    statusLock.lock();
     changed = true;
+    statusLock.unlock();
+
     valid[from][to] = status;
     cost[from][to] = linkCost;
 }
