@@ -13,6 +13,19 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
     lastUpdateQueueTime = updateQueueTime;
 }
 
+void LS_Router::announceToNeighbors()
+{
+    struct timespec sleepFor;
+    sleepFor.tv_sec = 0;
+    sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
+    while(1)
+    {
+        hackyBroadcast("HEREIAM", 7);
+        lspManager();
+        nanosleep(&sleepFor, 0);
+    }
+}
+
 void LS_Router::checkHeartBeat()
 {
     vector<int> neighbors;
@@ -33,7 +46,8 @@ void LS_Router::checkHeartBeat()
         {
             network.updateStatus(false, myNodeID, nextNode);
             network.updateStatus(false, nextNode, myNodeID);
-            generateLSPL(myNodeID, nextNode);
+            // generateLSPL(myNodeID, nextNode);
+            // TODO: Need to mark change
             seqNums[nextNode] = INVALID;
         }
     }

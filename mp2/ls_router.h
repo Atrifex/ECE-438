@@ -37,6 +37,7 @@ class LS_Router : public Router
 
         // Member Functions
         void listenForNeighbors();
+        void announceToNeighbors();
 
     private:
         // Private Member functions
