@@ -94,6 +94,14 @@ int Graph::getLinkStatus(int from, int to)
     return valid[from][to];
 }
 
+bool Graph::getChangeStatus() {
+    return changed;
+}
+
+void Graph::setChangeStatus(bool status) {
+    changed = status;
+}
+
 void Graph::updateStatus(bool status, int from, int to)
 {
     changed = true;

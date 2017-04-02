@@ -4,26 +4,22 @@
 LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName)
 {
     network = new Graph(id, graphFileName);
-
     seqNums.resize(NUM_NODES, INVALID);
-
-    gettimeofday(&updateQueueTime, 0);
-    lastUpdateQueueTime = updateQueueTime;
 }
 
 LS_Router::~LS_Router() {
     delete network;
 }
 
-void LS_Router::createLSP(lsp_t & lsp, , vector<int> & neighbors)
+void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
 {
     lsp.producerNode = htonl(myNodeID);
     lsp.sequenceNum = htonl(++seqNums[myNodeID]);
 
     for(size_t i = 0; i < neighbors.size(); i++){
         lsp.links[i].neighbor = htonl(neighbors[i]);
-        lsp.links[i].cost = htonl((int)network->getLinkCost(neighbors[i]));
-        lsp.links[i].status = htonl((int)network->getLinkStatus(neighbors[i]));
+        lsp.links[i].cost = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
+        lsp.links[i].status = htonl((int)network->getLinkStatus(myNodeID, neighbors[i]));
     }
 
     lsp.numLinks = htonl(neighbors.size());
@@ -31,7 +27,7 @@ void LS_Router::createLSP(lsp_t & lsp, , vector<int> & neighbors)
 
 void LS_Router::sendLSP()
 {
-    if(network->changed == false) return;
+    if(network->getChangeStatus() == false) return;
 
     lsp_t lsp;
     vector<int> neighbors;
@@ -47,7 +43,7 @@ void LS_Router::sendLSP()
     }
 
     // NOTE: dont care if there is a race condition
-    network->changed = false;
+    network->setChangeStatus(false);
 }
 
 void LS_Router::announceToNeighbors()
@@ -66,15 +62,14 @@ void LS_Router::announceToNeighbors()
 void LS_Router::processLSP(lsp_t * lspNetwork)
 {
     int producerNode = ntohl(lspNetwork->producerNode);
-    int sequenceNum = ntohl(lspNetwork->sequenceNum);
     int numLinks = ntohl(lspNetwork->numLinks);
 
-    network.resetNodeInfo(producerNode);
+    network->resetNodeInfo(producerNode);
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
         int cost = ntohl(lspNetwork->links[i].cost);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
-        network.updatedLink(status, cost, producerNode, neighbor);
+        network->updateLink(status, cost, producerNode, neighbor);
     }
 }
 
@@ -228,8 +223,8 @@ void LS_Router::listenForNeighbors()
             network->updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
             //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
-            int producerNode = ntohl(((int *)recvBuf)[1])
-            int sequenceNum = ntohl(((int *)recvBuf)[2])
+            int producerNode = ntohl(((int *)recvBuf)[1]);
+            int sequenceNum = ntohl(((int *)recvBuf)[2]);
             if(sequenceNum > seqNums[producerNode]){
                 seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
