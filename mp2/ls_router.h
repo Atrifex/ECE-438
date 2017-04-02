@@ -12,28 +12,27 @@
 #define LSPU_PER_EPOCH 64
 #define LSPL_PER_EPOCH 10
 
-typedef struct
-{
-    int sourceNode;
+typedef struct {
     int destNode;
     int cost;
     int valid;
-} Link_t;
+} link_t;
 
-typedef struct
-{
+typedef struct {
     char header[4] = "lsp";
+    // producerNode == source node for links
     int producerNode;
     int sequence_num;
-    // struct timespec ttl;
-    Link_t updatedLink;
-} LSPL_t;
+    int links;
+    link_t updatedLink;
+} lsp_t;
 
 class LS_Router : public Router
 {
     public:
         // Constructor and Destructor
         LS_Router(int id, char * graphFileName, char * logFileName);
+        ~LS_Router();
 
         // Member Functions
         void listenForNeighbors();
@@ -58,14 +57,14 @@ class LS_Router : public Router
         LSPL_t networkToHostLSPL(LSPL_t * networkval);
 
         // Graph stores the current network topology
-        Graph network;
+        Graph * network;
 
         // sequence numbers for LSP packets
         vector<int> seqNums;
 
         // Member variables for update manager
         queue<int_pair> updateQueue;
-        queue<Link_t> LSPQueue;
+        queue<link_t> LSPQueue;
         struct timeval updateQueueTime, lastUpdateQueueTime;
         struct timeval LSPQueueTime, lastLSPQueueTime;
 

@@ -3,14 +3,16 @@
 
 LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName)
 {
-    // initialize graph
-    Graph temp(id, graphFileName);
-    network = temp;
+    network = new Graph(id, graphFileName);
 
     seqNums.resize(NUM_NODES, INVALID);
 
     gettimeofday(&updateQueueTime, 0);
     lastUpdateQueueTime = updateQueueTime;
+}
+
+LS_Router::~LS_Router() {
+    delete network;
 }
 
 void LS_Router::announceToNeighbors()
@@ -58,7 +60,7 @@ void LS_Router::generateLSPL(int sourceNode, int destNode)
     vector<int> neighbors;
     network.getNeighbors(myNodeID, neighbors);
 
-    LSPL_t lspl_inst;
+    lsp_t lspl_inst;
     lspl_inst.producerNode = myNodeID;
     lspl_inst.sequence_num = ++seqNums[myNodeID];
     lspl_inst.updatedLink.sourceNode = sourceNode;
@@ -66,12 +68,12 @@ void LS_Router::generateLSPL(int sourceNode, int destNode)
     lspl_inst.updatedLink.cost = network.getLinkCost(sourceNode, destNode);
     lspl_inst.updatedLink.valid = (int)network.getLinkStatus(sourceNode, destNode);
 
-    LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
+    lsp_t netLSP = hostToNetworkLSPL(&lspl_inst);
 
     for(size_t i = 0; i < neighbors.size(); i++)
     {
         int nextNode = neighbors[i];
-        sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+        sendto(sockfd, (char*)&netLSP, sizeof(lsp_t), 0,
             (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
     }
 }
@@ -82,19 +84,19 @@ void LS_Router::periodicLSPL()
     network.getNeighbors(myNodeID, neighbors);
 
     for(size_t i = 0; i < neighbors.size(); i++){
-        LSPL_t lspl_inst;
+        lsp_t lspl_inst;
         lspl_inst.producerNode = myNodeID;
         lspl_inst.sequence_num = ++seqNums[myNodeID];
         lspl_inst.updatedLink.sourceNode = myNodeID;
         lspl_inst.updatedLink.destNode = neighbors[i];
         lspl_inst.updatedLink.cost = network.getLinkCost(myNodeID, neighbors[i]);
         lspl_inst.updatedLink.valid = (int)network.getLinkStatus(myNodeID, neighbors[i]);
-        LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
+        lsp_t netLSP = hostToNetworkLSPL(&lspl_inst);
 
         for(size_t i = 0; i < neighbors.size(); i++)
         {
             int nextNode = neighbors[i];
-            sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+            sendto(sockfd, (char*)&netLSP, sizeof(lsp_t), 0,
                 (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
         }
     }
@@ -110,7 +112,7 @@ void LS_Router::forwardLSPL(char * LSPL_Buf, int heardFromNode)
         int nextNode = neighbors[i];
 
         if(nextNode != heardFromNode){
-            sendto(sockfd, LSPL_Buf, sizeof(LSPL_t), 0,
+            sendto(sockfd, LSPL_Buf, sizeof(lsp_t), 0,
                 (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
         }
     }
@@ -118,16 +120,16 @@ void LS_Router::forwardLSPL(char * LSPL_Buf, int heardFromNode)
 
 void LS_Router::generateLSPU(int linkSource, int linkDest, int destNode)
 {
-    LSPL_t lspl_inst;
+    lsp_t lspl_inst;
     lspl_inst.producerNode = myNodeID;
     lspl_inst.sequence_num = ++seqNums[myNodeID];
     lspl_inst.updatedLink.sourceNode = linkSource;
     lspl_inst.updatedLink.destNode = linkDest;
     lspl_inst.updatedLink.cost = network.getLinkCost(linkSource, linkDest);
     lspl_inst.updatedLink.valid = (int)network.getLinkStatus(linkSource, linkDest);
-    LSPL_t netLSP = hostToNetworkLSPL(&lspl_inst);
+    lsp_t netLSP = hostToNetworkLSPL(&lspl_inst);
 
-    sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+    sendto(sockfd, (char*)&netLSP, sizeof(lsp_t), 0,
         (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
 }
 
@@ -197,7 +199,7 @@ void LS_Router::updateManager()
 
 void LS_Router::sendLSPU(int destNode)
 {
-    LSPL_t lspl_inst, netLSP;
+    lsp_t lspl_inst, netLSP;
 
     lspl_inst.producerNode = myNodeID;
     lspl_inst.updatedLink.valid = TRUE;
@@ -210,7 +212,7 @@ void LS_Router::sendLSPU(int destNode)
                 lspl_inst.updatedLink.destNode = to;
                 lspl_inst.updatedLink.cost = network.getLinkCost(from, to);
                 netLSP = hostToNetworkLSPL(&lspl_inst);
-                sendto(sockfd, (char*)&netLSP, sizeof(LSPL_t), 0,
+                sendto(sockfd, (char*)&netLSP, sizeof(lsp_t), 0,
                     (struct sockaddr *)&globalNodeAddrs[destNode], sizeof(globalNodeAddrs[destNode]));
             }
         }
@@ -320,12 +322,12 @@ void LS_Router::listenForNeighbors()
             }
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
-            //'lsp\0'<4 ASCII bytes>, rest of LSPL_t struct
+            //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
 
-            if(bytesRecvd != sizeof(LSPL_t)){
-                perror("incorrect bytes received for LSPL_t");
+            if(bytesRecvd != sizeof(lsp_t)){
+                perror("incorrect bytes received for lsp_t");
              } else{
-                LSPL_t lsplForward = networkToHostLSPL((LSPL_t *)recvBuf);
+                lsp_t lsplForward = networkToHostLSPL((lsp_t *)recvBuf);
                 if(lsplForward.sequence_num > seqNums[lsplForward.producerNode]){
                     seqNums[lsplForward.producerNode] = lsplForward.sequence_num;
 
@@ -375,11 +377,11 @@ void LS_Router::updateForwardingTable()
     return;
 }
 
-LSPL_t LS_Router::hostToNetworkLSPL(LSPL_t * hostval)
+lsp_t LS_Router::hostToNetworkLSPL(lsp_t * hostval)
 {
-    LSPL_t ret;
+    lsp_t ret;
 
-    // LSPL_t contains only ints, so it is 4-byte aligned.
+    // lsp_t contains only ints, so it is 4-byte aligned.
     // Therefore, we can individually convert each member of the struct into network byte order
 
     ret.producerNode = htonl(hostval->producerNode);
@@ -392,11 +394,11 @@ LSPL_t LS_Router::hostToNetworkLSPL(LSPL_t * hostval)
     return ret;
 }
 
-LSPL_t LS_Router::networkToHostLSPL(LSPL_t * networkval)
+lsp_t LS_Router::networkToHostLSPL(lsp_t * networkval)
 {
-    LSPL_t ret;
+    lsp_t ret;
 
-    // Since LSPL_t is 4-byte aligned, everything works out nicely here
+    // Since lsp_t is 4-byte aligned, everything works out nicely here
     ret.producerNode = ntohl(networkval->producerNode);
     ret.sequence_num = ntohl(networkval->sequence_num);
     ret.updatedLink.sourceNode = ntohl(networkval->updatedLink.sourceNode);
