@@ -21,15 +21,15 @@ void LS_Router::createLSP(lsp_t & lsp, , vector<int> & neighbors)
     lsp.sequenceNum = htonl(++seqNums[myNodeID]);
 
     for(size_t i = 0; i < neighbors.size(); i++){
-        lsp[i].nodeID = htonl(neighbors[i]);
-        lsp[i].cost = htonl((int)network->getLinkCost(neighbors[i]));
-        lsp[i].status = htonl((int)network->getLinkStatus(neighbors[i]));
+        lsp.links[i].neighbor = htonl(neighbors[i]);
+        lsp.links[i].cost = htonl((int)network->getLinkCost(neighbors[i]));
+        lsp.links[i].status = htonl((int)network->getLinkStatus(neighbors[i]));
     }
 
     lsp.numLinks = htonl(neighbors.size());
 }
 
-void LS_Router::lspManager()
+void LS_Router::sendLSP()
 {
     if(network->changed == false) return;
 
@@ -58,8 +58,23 @@ void LS_Router::announceToNeighbors()
     while(1)
     {
         hackyBroadcast("HEREIAM", 7);
-        lspManager();
+        sendLSP();
         nanosleep(&sleepFor, 0);
+    }
+}
+
+void LS_Router::processLSP(lsp_t * lspNetwork)
+{
+    int producerNode = ntohl(lspNetwork->producerNode);
+    int sequenceNum = ntohl(lspNetwork->sequenceNum);
+    int numLinks = ntohl(lspNetwork->numLinks);
+
+    network.resetNodeInfo(producerNode);
+    for(int i = 0; i < numLinks; i++){
+        int neighbor = ntohl(lspNetwork->links[i].neighbor);
+        int cost = ntohl(lspNetwork->links[i].cost);
+        bool status = (bool)ntohl(lspNetwork->links[i].status);
+        network.updatedLink(status, cost, producerNode, neighbor);
     }
 }
 
@@ -213,10 +228,12 @@ void LS_Router::listenForNeighbors()
             network->updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
             //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
-            int sequenceNum = ntohl(*recvBuf)
-            if( > seqNums[LSPForward.producerNode]){
+            int producerNode = ntohl(((int *)recvBuf)[1])
+            int sequenceNum = ntohl(((int *)recvBuf)[2])
+            if(sequenceNum > seqNums[producerNode]){
+                seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
-                processLSP();
+                processLSP((lsp_t *)recvBuf);
             }
         }
 

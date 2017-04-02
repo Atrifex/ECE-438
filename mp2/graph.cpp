@@ -119,6 +119,12 @@ void Graph::updateLink(bool status, int linkCost, int from, int to)
     cost[from][to] = linkCost;
 }
 
+void Graph::resetNodeInfo(int node)
+{
+    valid[node].resize(NUM_NODES, false);
+    cost[node].resize(NUM_NODES, INIT_COST);
+}
+
 void Graph::getNeighbors(int nodeID, vector<int> & neighbors)
 {
     for(int i = 0; i < NUM_NODES; i++) {

@@ -13,7 +13,7 @@
 #define LSP_PER_EPOCH 10
 
 typedef struct {
-    int nodeID;
+    int neighbor;
     int cost;
     int status;
 } link_t;
@@ -42,14 +42,12 @@ class LS_Router : public Router
         // Private Member functions
         void updateForwardingTable();
         void checkHeartBeat();
-        void lspManager();
+        void sendLSP();
 
         // Functions to handle LSP
         void createLSP(lsp_t & lsp, vector<int> & neighbors);
-
-        void processLSP(lsp_t & lsp, vector<int> & neighbors);
-
         void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
+        void processLSP(lsp_t * lspNetwork);
 
         // Graph stores the current network topology
         Graph * network;

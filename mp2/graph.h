@@ -46,6 +46,7 @@ class Graph
         void updateStatus(bool status, int from, int to);
         void updateCost(int linkCost, int from, int to);
         void updateLink(bool status, int linkCost, int from, int to);
+        void resetNodeInfo(int node);
 
         // Member Functions
         void getNeighbors(int nodeID, vector<int> & neighbors);
