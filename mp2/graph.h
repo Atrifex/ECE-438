@@ -40,7 +40,6 @@ class Graph
         // Constructor
         Graph();
         Graph(int id, char * filename);
-        Graph & operator=(Graph & other);
 
         // get and set functions
         int getLinkCost(int from, int to);

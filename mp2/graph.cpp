@@ -72,38 +72,25 @@ Graph::Graph(int id, char * filename)
     fclose(fp);
 }
 
-Graph & Graph::operator=(Graph & other)
-{
-    if(this != &other)
-    {
-        myNodeID = other.myNodeID;
-        valid = other.valid;
-        cost = other.cost;
-    }
-
-    return *this;
-}
-
-int Graph::getLinkCost(int from, int to)
-{
+int Graph::getLinkCost(int from, int to){
     return cost[from][to];
 }
 
-int Graph::getLinkStatus(int from, int to)
-{
+int Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
-bool Graph::getClearChangeStatus() {
+bool Graph::getClearChangeStatus(){
 
-    statusLock.lock();
+    if(statusLock.try_lock()){
+        bool status = changed;
+        changed = false;
 
-    bool status = changed;
-    changed = false;
+        statusLock.unlock();
 
-    statusLock.unlock();
-
-    return status;
+        return status;
+    }
+    return false;
 }
 
 void Graph::updateStatus(bool status, int from, int to)
