@@ -243,7 +243,7 @@ void LS_Router::listenForNeighbors()
 
             changedLock.lock();
             network->updateCost(costNew, myNodeID, destID);
-            if(network.getLinkStatus(myNodeID, destID) == true){
+            if(network->getLinkStatus(myNodeID, destID) == true){
                 changed = true;
             }
             changedLock.unlock();
