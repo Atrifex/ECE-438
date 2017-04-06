@@ -145,7 +145,7 @@ void LS_Router::checkHeartBeat()
             seqNums[nextNode] = INVALID;
         }
     }
-    changedLock.lock();
+    changedLock.unlock();
 
 
 }
