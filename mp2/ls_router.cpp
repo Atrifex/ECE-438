@@ -77,14 +77,18 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
     int seqNum = ntohl(lspNetwork->sequenceNum);
     int numLinks = ntohl(lspNetwork->numLinks);
 
+    int changeCounter = 0;
+
     network->resetNodeInfo(producerNode);
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
         int weight = ntohl(lspNetwork->links[i].weight);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
-        network->updateLink(status, weight, producerNode, neighbor);
+        changeCounter += network->updateLink(status, weight, producerNode, neighbor);
         lspLogger(seqNum, producerNode, neighbor, status, weight);
     }
+
+    return (bool)changeCounter;
 }
 
 void LS_Router::forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode)

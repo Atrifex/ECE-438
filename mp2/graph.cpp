@@ -79,21 +79,40 @@ int Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
-void Graph::updateStatus(bool status, int from, int to) {
-    valid[from][to] = status;
+bool Graph::updateStatus(bool status, int from, int to) {
+    if(valid[from][to] != status){
+        valid[from][to] = status;
+        return true;
+    }
+    return false;
 }
 
-void Graph::updateCost(int linkCost, int from, int to) {
+bool Graph::updateCost(int linkCost, int from, int to) {
     #ifdef DEBUG
         cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
     #endif
 
-    cost[from][to] = linkCost;
+    if(cost[from][to] != linkCost){
+        cost[from][to] = linkCost;
+        return true;
+    }
+    return false;
 }
 
-void Graph::updateLink(bool status, int linkCost, int from, int to){
-    valid[from][to] = status;
-    cost[from][to] = linkCost;
+bool Graph::updateLink(bool status, int linkCost, int from, int to){
+    bool changed = false;
+
+    if(valid[from][to] != status){
+        valid[from][to] = status;
+        changed = true;
+    }
+
+    if(cost[from][to] != linkCost){
+        cost[from][to] = linkCost;
+        changed = true;
+    }
+
+    return changed;
 }
 
 void Graph::resetNodeInfo(int node){
