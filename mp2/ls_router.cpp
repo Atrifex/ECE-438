@@ -191,7 +191,7 @@ void LS_Router::listenForNeighbors()
                 recvBuf[bytesRecvd] = '\0';
                 logToFile(SEND_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
-                logToFile(UNREACHABLE_MES, destID, NULL, NULL);
+                logToFile(UNREACHABLE_MES, destID, 0, NULL);
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
@@ -216,7 +216,7 @@ void LS_Router::listenForNeighbors()
                 recvBuf[bytesRecvd] = '\0';
                 logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
-                logToFile(UNREACHABLE_MES, destID, NULL, NULL);
+                logToFile(UNREACHABLE_MES, destID, 0, NULL);
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
@@ -246,7 +246,7 @@ void LS_Router::listenForNeighbors()
     }
 }
 
-void lspLogger(int from, int to, bool status, int weight)
+void LS_Router::lspLogger(int from, int to, bool status, int weight)
 {
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
@@ -255,7 +255,6 @@ void lspLogger(int from, int to, bool status, int weight)
     // Write to logFile
     if(fwrite(logLine, 1, strlen(logLine), lspFileptr) != strlen(logLine)) {
             fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
-            return -1;
     }
 
     fflush(lspFileptr);
