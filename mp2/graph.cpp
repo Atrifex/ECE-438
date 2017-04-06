@@ -79,6 +79,21 @@ int Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
+bool updateAndCheckChanges(int producer, vector<int> & lspStatus, vector<bool> & lspCost)
+{
+    int changeStatus = false;
+
+    for(size_t i = 0; i < NUM_NODES; i++){
+        if((cost[producer][i] != lspCost[producer][i]) || (valid[producer][i] != lspStatus[producer][i])){
+            cost[producer][i] = lspCost[producer][i];
+            valid[producer][i] = lspStatus[producer][i];
+            changeStatus = true;
+        }
+    }
+
+    return changeStatus;
+}
+
 bool Graph::updateStatus(bool status, int from, int to) {
     if(valid[from][to] != status){
         valid[from][to] = status;

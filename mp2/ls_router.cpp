@@ -75,25 +75,24 @@ void LS_Router::announceToNeighbors()
 
 bool LS_Router::processLSP(lsp_t * lspNetwork)
 {
+    vector<bool> lspStatus(NUM_NODES, false);
+    vector<int> lspCost(NUM_NODES, INVALID);
+
     int producerNode = ntohl(lspNetwork->producerNode);
     int seqNum = ntohl(lspNetwork->sequenceNum);
     int numLinks = ntohl(lspNetwork->numLinks);
 
-    int changeCounter = 0;
-
-    network->resetNodeInfo(producerNode);
+    // network->resetNodeInfo(producerNode);
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
-        int weight = ntohl(lspNetwork->links[i].weight);
-        bool status = (bool)ntohl(lspNetwork->links[i].status);
-        changeCounter += network->updateLink(status, weight, producerNode, neighbor);
-
+        lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
+        lspStatus[neighbor] = (bool)ntohl(lspNetwork->links[i].status);
 #ifdef DEBUG
-        lspLogger(seqNum, producerNode, neighbor, status, weight);
+        lspLogger(seqNum, producerNode, neighbor, lspStatus[neighbor], lspCost[neighbor]);
 #endif
     }
 
-    return (bool)changeCounter;
+    return updateAndCheckChanges(producerNode, lspStatus, lspCost);
 }
 
 void LS_Router::forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode)
