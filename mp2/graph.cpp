@@ -79,7 +79,7 @@ int Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
-bool updateAndCheckChanges(int producer, vector<int> & lspStatus, vector<bool> & lspCost)
+bool updateAndCheckChanges(int producer, vector<bool> & lspStatus, vector<int> & lspCost)
 {
     int changeStatus = false;
 

@@ -92,7 +92,7 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
 #endif
     }
 
-    return updateAndCheckChanges(producerNode, lspStatus, lspCost);
+    return network->updateAndCheckChanges(producerNode, lspStatus, lspCost);
 }
 
 void LS_Router::forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode)
