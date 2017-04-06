@@ -5,6 +5,7 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
     network = new Graph(id, graphFileName);
     seqNums.resize(NUM_NODES, INVALID);
 
+#ifdef DEBUG
     char lspFileName[100];
     sprintf(lspFileName, "log/packetsLSP%d", id);
     // initialize file pointer
@@ -14,6 +15,7 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
         exit(1);
     }
     changed = false;
+#endif
 }
 
 LS_Router::~LS_Router() {
@@ -85,7 +87,10 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
         int weight = ntohl(lspNetwork->links[i].weight);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
         changeCounter += network->updateLink(status, weight, producerNode, neighbor);
+
+#ifdef DEBUG
         lspLogger(seqNum, producerNode, neighbor, status, weight);
+#endif
     }
 
     return (bool)changeCounter;
@@ -273,13 +278,13 @@ void LS_Router::listenForNeighbors()
 
         checkHeartBeat();
 
-        #ifdef GRADE
-            gettimeofday(&graphUpdateCheck, 0);
-            if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
-                network->writeToFile();
-                lastGraphUpdate = graphUpdateCheck;
-            }
-        #endif
+#ifdef GRADE
+        gettimeofday(&graphUpdateCheck, 0);
+        if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
+            network->writeToFile();
+            lastGraphUpdate = graphUpdateCheck;
+        }
+#endif
     }
 }
 

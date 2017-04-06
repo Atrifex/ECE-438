@@ -88,10 +88,6 @@ bool Graph::updateStatus(bool status, int from, int to) {
 }
 
 bool Graph::updateCost(int linkCost, int from, int to) {
-    #ifdef DEBUG
-        cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
-    #endif
-
     if(cost[from][to] != linkCost){
         cost[from][to] = linkCost;
         return true;
@@ -116,8 +112,8 @@ bool Graph::updateLink(bool status, int linkCost, int from, int to){
 }
 
 void Graph::resetNodeInfo(int node){
-    valid[node].resize(NUM_NODES, false);
-    cost[node].resize(NUM_NODES, INIT_COST);
+    valid[node].assign(NUM_NODES, false);
+    //cost[node].assign(NUM_NODES, INIT_COST);
 }
 
 void Graph::getNeighbors(int nodeID, vector<int> & neighbors)
