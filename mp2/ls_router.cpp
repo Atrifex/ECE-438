@@ -79,7 +79,6 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
     vector<int> lspCost(NUM_NODES, INVALID);
 
     int producerNode = ntohl(lspNetwork->producerNode);
-    int seqNum = ntohl(lspNetwork->sequenceNum);
     int numLinks = ntohl(lspNetwork->numLinks);
 
     // network->resetNodeInfo(producerNode);
@@ -88,6 +87,7 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
         lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
         lspStatus[neighbor] = (bool)ntohl(lspNetwork->links[i].status);
 #ifdef DEBUG
+        int seqNum = ntohl(lspNetwork->sequenceNum);
         lspLogger(seqNum, producerNode, neighbor, lspStatus[neighbor], lspCost[neighbor]);
 #endif
     }
