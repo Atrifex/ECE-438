@@ -66,9 +66,6 @@ class Graph
         // NOTE: vectors are indexed [From][To]
         vector< vector<bool> > valid;
         vector< vector<int> > cost;
-
-        bool changed;
-        mutex statusLock;
 };
 
 

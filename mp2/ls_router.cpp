@@ -35,14 +35,20 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
 
 void LS_Router::sendLSP()
 {
-    if(network->getClearChangeStatus() == false) return;
-
     lsp_t lsp;
     vector<int> neighbors;
 
-    network->getNeighbors(myNodeID, neighbors);
+    changedLock.lock();
+    if(changed == false){
+        changedLock.unlock();
+        return;
+    }
 
+    network->getNeighbors(myNodeID, neighbors);
     createLSP(lsp, neighbors);
+
+    changed = false;
+    changedLock.unlock();
 
     int sizeOfLSP = neighbors.size()*sizeof(link_t) + 3*sizeof(int) + 4*sizeof(char);
     for(size_t i = 0; i < neighbors.size(); i++){
@@ -123,6 +129,8 @@ void LS_Router::checkHeartBeat()
     long int lastHeartbeat_usec;
 
     network->getNeighbors(myNodeID, neighbors);
+
+    changedLock.lock();
     for(size_t i = 0; i < neighbors.size(); i++)
     {
         int nextNode = neighbors[i];
@@ -131,11 +139,15 @@ void LS_Router::checkHeartBeat()
 
         if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD)
         {
+            changed = true;
             network->updateStatus(false, myNodeID, nextNode);
             network->updateStatus(false, nextNode, myNodeID);
             seqNums[nextNode] = INVALID;
         }
     }
+    changedLock.lock();
+
+
 }
 
 void LS_Router::listenForNeighbors()
@@ -167,7 +179,11 @@ void LS_Router::listenForNeighbors()
         {
             heardFromNode = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
+
+            changedLock.lock();
+            changed = true;
             network->updateStatus(true, myNodeID, heardFromNode);
+            changedLock.unlock();
         }
 
         short int destID = 0;
@@ -223,7 +239,15 @@ void LS_Router::listenForNeighbors()
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
             destID = ntohs(((short int*)recvBuf)[2]);
-            network->updateCost(ntohs(*((int*)&(((char*)recvBuf)[6]))), myNodeID, destID);
+            int costNew = ntohs(*((int*)&(((char*)recvBuf)[6])));
+
+            changedLock.lock();
+            network->updateCost(costNew, myNodeID, destID);
+            if(network.getLinkStatus(myNodeID, destID) == true){
+                changed = true;
+            }
+            changedLock.unlock();
+
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
             //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
             int producerNode = ntohl(((int *)recvBuf)[1]);
@@ -232,18 +256,22 @@ void LS_Router::listenForNeighbors()
                 seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
                 processLSP((lsp_t *)recvBuf);
+
+                changedLock.lock();
+                changed = true;
+                changedLock.unlock();
             }
         }
 
         checkHeartBeat();
 
-#ifdef GRADE
-        gettimeofday(&graphUpdateCheck, 0);
-        if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
-            network->writeToFile();
-            lastGraphUpdate = graphUpdateCheck;
-        }
-#endif
+        #ifdef GRADE
+            gettimeofday(&graphUpdateCheck, 0);
+            if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
+                network->writeToFile();
+                lastGraphUpdate = graphUpdateCheck;
+            }
+        #endif
     }
 }
 

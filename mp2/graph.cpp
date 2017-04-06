@@ -7,7 +7,6 @@ Graph::Graph()
     validLinks = 0;
     valid.resize(NUM_NODES, vector<bool>(NUM_NODES, false));
     cost.resize(NUM_NODES, vector<int>(NUM_NODES, INIT_COST));
-    changed = false;
 }
 
 Graph::Graph(int id, char * filename)
@@ -80,58 +79,24 @@ int Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
-bool Graph::getClearChangeStatus(){
-
-    if(statusLock.try_lock()){
-        bool status = changed;
-        changed = false;
-
-        statusLock.unlock();
-
-        return status;
-    }
-    return false;
-}
-
-void Graph::updateStatus(bool status, int from, int to)
-{
-    statusLock.lock();
-    changed = true;
-    statusLock.unlock();
-
+void Graph::updateStatus(bool status, int from, int to) {
     valid[from][to] = status;
 }
 
-void Graph::updateCost(int linkCost, int from, int to)
-{
-
-#ifdef DEBUG
-    cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
-#endif
+void Graph::updateCost(int linkCost, int from, int to) {
+    #ifdef DEBUG
+        cout << myNodeID << ": " << from << " " << to << " cost " << linkCost << endl;
+    #endif
 
     cost[from][to] = linkCost;
-    if(valid[from][to] == true){
-        statusLock.lock();
-        changed = true;
-        statusLock.unlock();
-    }
 }
 
-void Graph::updateLink(bool status, int linkCost, int from, int to)
-{
-    statusLock.lock();
-    changed = true;
-    statusLock.unlock();
-
+void Graph::updateLink(bool status, int linkCost, int from, int to){
     valid[from][to] = status;
     cost[from][to] = linkCost;
 }
 
-void Graph::resetNodeInfo(int node)
-{
-    statusLock.lock();
-    changed = true;
-    statusLock.unlock();
+void Graph::resetNodeInfo(int node){
     valid[node].resize(NUM_NODES, false);
     cost[node].resize(NUM_NODES, INIT_COST);
 }
