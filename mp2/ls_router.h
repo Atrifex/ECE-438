@@ -47,7 +47,7 @@ class LS_Router : public Router
         void sendLSP();
         void createLSP(lsp_t & lsp, vector<int> & neighbors);
         void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
-        void processLSP(lsp_t * lspNetwork);
+        bool processLSP(lsp_t * lspNetwork);
 
         // debug functions
         void lspLogger(int seqNum, int from, int to, bool status, int weight);

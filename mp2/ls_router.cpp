@@ -13,6 +13,7 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
         close(sockfd);
         exit(1);
     }
+    changed = false;
 }
 
 LS_Router::~LS_Router() {
@@ -70,7 +71,7 @@ void LS_Router::announceToNeighbors()
     }
 }
 
-void LS_Router::processLSP(lsp_t * lspNetwork)
+bool LS_Router::processLSP(lsp_t * lspNetwork)
 {
     int producerNode = ntohl(lspNetwork->producerNode);
     int seqNum = ntohl(lspNetwork->sequenceNum);
@@ -181,7 +182,9 @@ void LS_Router::listenForNeighbors()
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
 
             changedLock.lock();
-            changed = true;
+            if(network->getLinkStatus(myNodeID, heardFromNode) == false){
+                changed = true;
+            }
             network->updateStatus(true, myNodeID, heardFromNode);
             changedLock.unlock();
         }
@@ -255,10 +258,11 @@ void LS_Router::listenForNeighbors()
             if(sequenceNum > seqNums[producerNode]){
                 seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
-                processLSP((lsp_t *)recvBuf);
+                bool changeInter = processLSP((lsp_t *)recvBuf);
 
                 changedLock.lock();
-                changed = true;
+                if(changeInter == true)
+                    changed = true;
                 changedLock.unlock();
             }
         }
@@ -280,7 +284,8 @@ void LS_Router::lspLogger(int seqNum, int from, int to, bool status, int weight)
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
     sprintf(logLine, "seqNum %d, from %d, to %d, status %d, cost %d\n", seqNum, from, to, status, weight);
-    cout << logLine;
+    if(myNodeID == 0)
+        cout << logLine;
 
     // Write to logFile
     if(fwrite(logLine, 1, strlen(logLine), lspFileptr) != strlen(logLine)) {
