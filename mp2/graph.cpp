@@ -129,6 +129,9 @@ void Graph::updateLink(bool status, int linkCost, int from, int to)
 
 void Graph::resetNodeInfo(int node)
 {
+    statusLock.lock();
+    changed = true;
+    statusLock.unlock();
     valid[node].resize(NUM_NODES, false);
     cost[node].resize(NUM_NODES, INIT_COST);
 }

@@ -4,6 +4,15 @@
 LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName) {
     network = new Graph(id, graphFileName);
     seqNums.resize(NUM_NODES, INVALID);
+
+    char lspFileName[100];
+    sprintf(lspFileName, "log/lsp%d", id);
+    // initialize file pointer
+    if((lspFileptr = fopen(lspFileName, "w")) == NULL){
+        perror("fopen");
+        close(sockfd);
+        exit(1);
+    }
 }
 
 LS_Router::~LS_Router() {
@@ -66,6 +75,7 @@ void LS_Router::processLSP(lsp_t * lspNetwork)
         int weight = ntohl(lspNetwork->links[i].weight);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
         network->updateLink(status, weight, producerNode, neighbor);
+        lspLogger(producerNode, neighbor, status, weight);
     }
 }
 
@@ -142,7 +152,6 @@ void LS_Router::listenForNeighbors()
 
     while(1)
     {
-        memset(recvBuf, 0, 1000);
         senderAddrLen = sizeof(senderAddr);
         if ((bytesRecvd = recvfrom(sockfd, recvBuf, 1000 , 0,
                 (struct sockaddr*)&senderAddr, &senderAddrLen)) == -1) {
@@ -156,10 +165,7 @@ void LS_Router::listenForNeighbors()
         if(strstr(fromAddr, "10.1.1."))
         {
             heardFromNode = atoi(strchr(strchr(strchr(fromAddr,'.')+1,'.')+1,'.')+1);
-
-            //record that we heard from heardFromNode just now.
             gettimeofday(&globalLastHeartbeat[heardFromNode], 0);
-
             network->updateStatus(true, myNodeID, heardFromNode);
         }
 
@@ -185,7 +191,7 @@ void LS_Router::listenForNeighbors()
                 recvBuf[bytesRecvd] = '\0';
                 logToFile(SEND_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
-                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
+                logToFile(UNREACHABLE_MES, destID, NULL, NULL);
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"forw", 4) == 0) {
@@ -210,7 +216,7 @@ void LS_Router::listenForNeighbors()
                 recvBuf[bytesRecvd] = '\0';
                 logToFile(FORWARD_MES, destID, nextNode, (char *)recvBuf + 6);
             } else{
-                logToFile(UNREACHABLE_MES, destID, nextNode, (char *)recvBuf + 6);
+                logToFile(UNREACHABLE_MES, destID, NULL, NULL);
             }
 
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
@@ -238,4 +244,19 @@ void LS_Router::listenForNeighbors()
         }
 #endif
     }
+}
+
+void lspLogger(int from, int to, bool status, int weight)
+{
+    char logLine[256]; // Message is <= 100 bytes, so this is always enough
+
+    sprintf(logLine, "LSP from %d, to %d, status %d, cost %d\n", from, to, status, weight);
+
+    // Write to logFile
+    if(fwrite(logLine, 1, strlen(logLine), lspFileptr) != strlen(logLine)) {
+            fprintf(stderr, "logToFile: Error in fwrite(): Not all data written\n");
+            return -1;
+    }
+
+    fflush(lspFileptr);
 }

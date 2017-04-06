@@ -49,12 +49,18 @@ class LS_Router : public Router
         void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
         void processLSP(lsp_t * lspNetwork);
 
+        // debug functions
+        void lspLogger(int from, int to, bool status, int weight);
+
         // Graph stores the current network topology
         Graph * network;
 
         // sequence numbers for LSP packets
         vector<int> seqNums;
         queue<link_t> LSPQueue;
+
+        // debug vars
+        FILE * lspFileptr;
 };
 
 
