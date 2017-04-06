@@ -6,7 +6,7 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
     seqNums.resize(NUM_NODES, INVALID);
 
     char lspFileName[100];
-    sprintf(lspFileName, "log/lsp%d", id);
+    sprintf(lspFileName, "log/packetsLSP%d", id);
     // initialize file pointer
     if((lspFileptr = fopen(lspFileName, "w")) == NULL){
         perror("fopen");
@@ -67,6 +67,7 @@ void LS_Router::announceToNeighbors()
 void LS_Router::processLSP(lsp_t * lspNetwork)
 {
     int producerNode = ntohl(lspNetwork->producerNode);
+    int seqNum = ntohl(lspNetwork->sequenceNum);
     int numLinks = ntohl(lspNetwork->numLinks);
 
     network->resetNodeInfo(producerNode);
@@ -75,7 +76,7 @@ void LS_Router::processLSP(lsp_t * lspNetwork)
         int weight = ntohl(lspNetwork->links[i].weight);
         bool status = (bool)ntohl(lspNetwork->links[i].status);
         network->updateLink(status, weight, producerNode, neighbor);
-        lspLogger(producerNode, neighbor, status, weight);
+        lspLogger(seqNum, producerNode, neighbor, status, weight);
     }
 }
 
@@ -246,11 +247,12 @@ void LS_Router::listenForNeighbors()
     }
 }
 
-void LS_Router::lspLogger(int from, int to, bool status, int weight)
+void LS_Router::lspLogger(int seqNum, int from, int to, bool status, int weight)
 {
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
-    sprintf(logLine, "LSP from %d, to %d, status %d, cost %d\n", from, to, status, weight);
+    sprintf(logLine, "seqNum %d, from %d, to %d, status %d, cost %d\n", seqNum, from, to, status, weight);
+    cout << logLine;
 
     // Write to logFile
     if(fwrite(logLine, 1, strlen(logLine), lspFileptr) != strlen(logLine)) {

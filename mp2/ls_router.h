@@ -50,7 +50,7 @@ class LS_Router : public Router
         void processLSP(lsp_t * lspNetwork);
 
         // debug functions
-        void lspLogger(int from, int to, bool status, int weight);
+        void lspLogger(int seqNum, int from, int to, bool status, int weight);
 
         // Graph stores the current network topology
         Graph * network;
@@ -61,6 +61,8 @@ class LS_Router : public Router
 
         // debug vars
         FILE * lspFileptr;
+
+
 };
 
 
