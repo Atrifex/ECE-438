@@ -295,7 +295,7 @@ void LS_Router::listenForNeighbors()
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
             destID = ntohs(((short int*)recvBuf)[2]);
-            short int costNew = ntohs(*((short int*)&(((char*)recvBuf)[6])));
+            int costNew = ntohl(*((int*)&(((char*)recvBuf)[6])));
 
             changedLock.lock();
             network->updateCost(costNew, myNodeID, destID);
