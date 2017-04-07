@@ -117,6 +117,10 @@ int Router::logToFile(int log_type, short int dest, short int nexthop, char* mes
             return -1;
     }
 
+#ifdef DEBUG_LOG
+    cout << logLine;
+#endif
+
     // Write to logFile
     if(fwrite(logLine, 1, strlen(logLine), logFilePtr) != strlen(logLine))
     {

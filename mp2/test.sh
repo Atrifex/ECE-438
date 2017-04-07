@@ -1,14 +1,16 @@
 #!/bin/bash
 usage(){
         echo "usage: ./test.sh [--help | -h]
-                 [--test-default | -t] [--test-generated] [--test-new]
+                 [--test-default | -t] [--test-gen] [--test-new]
                  [--test-custom <folder> <initcost_prefix> <topofilename>]
-                 [--run-default | -r] [--run-generated] [--run-new]
+                 [--run-default | -r] [--run-gen] [--run-new]
                  [--run-custom <folder> <initcost_prefix> <topofilename>]
-                 [--grade-default | -g] [--grade-generated] [--grade-new]
+                 [--grade-default | -g] [--grade-gen] [--grade-new]
                  [--grade-custom <folder> <initcost_prefix> <topofilename> <gold_out>]
                  [--new-graph | -n] "
 }
+
+killall ls_router
 
 while [ ! $# -eq 0 ]
 do
@@ -21,7 +23,7 @@ do
             python ./scripts/topotest.py ./example_topology test2initcosts topoexample.txt
             exit
             ;;
-        --test-generated)
+        --test-gen)
             python ./scripts/topotest.py ./topology nodecosts networkTopology.txt
             exit
             ;;
@@ -35,11 +37,37 @@ do
             exit
             shift; shift; shift;
             ;;
+        --test-fb)
+            sh ./scripts/run.sh
+            sleep 5s
+            ./killNodes.sh 1 2
+            sleep 5s
+            ./manager_send 6 send 3 "________FALL BACK________"
+            exit
+            ;;
+        --test-fb-new)
+            python ./scripts/generateTopology.py
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
+            sleep 5s
+            ./manager_send 1 send 32 "________ORIGINAL_________"
+            echo "."
+            echo "."
+            echo "."
+            sleep 5s
+            ./killNodes.sh 0
+            sleep 5s
+            ./manager_send 1 send 32 "________FALL BACK________"
+            sleep 5s
+            ./ls_router 0 ./topology/nodecosts0 log/log0 &
+            sleep 5s
+            ./manager_send 1 send 32 "________BETTER___________"
+            exit
+            ;;
         --run-default | -r)
             sh ./scripts/run.sh
             exit
             ;;
-        --run-generated)
+        --run-gen)
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             exit
             ;;
@@ -59,7 +87,7 @@ do
             sh ./scripts/grade.sh 0
             exit
             ;;
-        --grade-generated) 
+        --grade-gen) 
             sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
             sleep 5s
             sh ./scripts/grade.sh 0

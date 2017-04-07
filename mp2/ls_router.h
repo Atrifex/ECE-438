@@ -15,7 +15,6 @@
 typedef struct {
     int neighbor;
     int weight;
-    int status;
 } link_t;
 
 typedef struct {

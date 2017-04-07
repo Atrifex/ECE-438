@@ -30,7 +30,6 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
     for(size_t i = 0; i < neighbors.size(); i++){
         lsp.links[i].neighbor = htonl(neighbors[i]);
         lsp.links[i].weight = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
-        lsp.links[i].status = htonl((int)network->getLinkStatus(myNodeID, neighbors[i]));
     }
 
     lsp.numLinks = htonl(neighbors.size());
@@ -65,10 +64,17 @@ void LS_Router::announceToNeighbors()
     struct timespec sleepFor;
     sleepFor.tv_sec = 0;
     sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
+
+    int counter = 0;
+
     while(1)
     {
         hackyBroadcast("HEREIAM", 7);
-        sendLSP();
+        if(counter == 3){
+            sendLSP();
+            counter = 0;
+        }
+        counter++;
         nanosleep(&sleepFor, 0);
     }
 }
@@ -85,7 +91,7 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
         lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
-        lspStatus[neighbor] = (bool)ntohl(lspNetwork->links[i].status);
+        lspStatus[neighbor] = true;
 #ifdef DEBUG
         int seqNum = ntohl(lspNetwork->sequenceNum);
         lspLogger(seqNum, producerNode, neighbor, lspStatus[neighbor], lspCost[neighbor]);
