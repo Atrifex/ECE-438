@@ -150,9 +150,14 @@ while(1):
     else:
         print("Please enter a valid number.")
 
+costsChecker = int(input("Cost Mode (0 - random / 1 - cost of 1): "))
+
 # assigns random weights to all of the edges
 for (u, v) in G.edges():
-    G.edge[u][v]['weight'] = random.randint(0,500)
+    if costsChecker == 0:
+        G.edge[u][v]['weight'] = random.randint(0,500)
+    else:
+        G.edge[u][v]['weight'] = 1
 
 ##### Setup Enviornment ####
 if os.path.isdir("./topology"):

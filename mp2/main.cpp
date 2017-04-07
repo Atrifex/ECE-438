@@ -15,6 +15,10 @@ void announceToNeighbors(LS_Router & router) {
     router.announceToNeighbors();
 }
 
+void generateLSP(LS_Router & router) {
+    router.generateLSP();
+}
+
 int main(int argc, char** argv)
 {
     if(argc != 4) {
@@ -27,6 +31,9 @@ int main(int argc, char** argv)
 
     // start announcing
     thread announcer(announceToNeighbors, ref(router));
+
+    // start generating lsps
+    thread lspGenerator(generateLSP, ref(router));
 
     // start listening
     router.listenForNeighbors();

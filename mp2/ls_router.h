@@ -5,12 +5,14 @@
 #include "router.h"
 #include "graph.h"
 
-#define TRUE 1
-#define FALSE 0
+#include <ctime>
 
-#define QUEUE_THRESHOLD 300000
-#define LSPU_PER_EPOCH 64
-#define LSP_PER_EPOCH 10
+using std::time;
+using std::srand;
+using std::rand;
+
+#define NS_PER_SEC 1000000000
+#define STAGGER_TIME 19531250
 
 typedef struct {
     int neighbor;
@@ -36,6 +38,7 @@ class LS_Router : public Router
         // Member Functions
         void listenForNeighbors();
         void announceToNeighbors();
+        void generateLSP();
 
     private:
         // Private Member functions
@@ -43,13 +46,14 @@ class LS_Router : public Router
         void checkHeartBeat();
 
         // Functions to handle LSP
-        void sendLSP();
+        void sendLSChanges();
+        void sendFullLSP();
         void createLSP(lsp_t & lsp, vector<int> & neighbors);
         void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
         bool processLSP(lsp_t * lspNetwork);
 
         // debug functions
-        void lspLogger(int seqNum, int from, int to, bool status, int weight);
+        void lspLogger(int seqNum, int from, int to, int weight);
 
         // Graph stores the current network topology
         Graph * network;

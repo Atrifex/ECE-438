@@ -4,6 +4,7 @@
 LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName) {
     network = new Graph(id, graphFileName);
     seqNums.resize(NUM_NODES, INVALID);
+    srand(id);
 
 #ifdef DEBUG
     char lspFileName[100];
@@ -35,8 +36,10 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
     lsp.numLinks = htonl(neighbors.size());
 }
 
-void LS_Router::sendLSP()
+void LS_Router::sendLSChanges()
 {
+    static int counter = 0;
+
     lsp_t lsp;
     vector<int> neighbors;
 
@@ -49,13 +52,56 @@ void LS_Router::sendLSP()
     network->getNeighbors(myNodeID, neighbors);
     createLSP(lsp, neighbors);
 
-    changed = false;
+    if(counter >= 10){
+        counter = 0;
+        changed = false;
+    }else{
+        counter++;
+    }
+
     changedLock.unlock();
 
     int sizeOfLSP = neighbors.size()*sizeof(link_t) + 3*sizeof(int) + 4*sizeof(char);
     for(size_t i = 0; i < neighbors.size(); i++){
         sendto(sockfd, (char *)&lsp, sizeOfLSP, 0,
             (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
+    }
+
+}
+
+void LS_Router::sendFullLSP()
+{
+    lsp_t lsp;
+    vector<int> neighbors;
+
+    changedLock.lock();
+    network->getNeighbors(myNodeID, neighbors);
+    createLSP(lsp, neighbors);
+    changedLock.unlock();
+
+    int sizeOfLSP = neighbors.size()*sizeof(link_t) + 3*sizeof(int) + 4*sizeof(char);
+    for(size_t i = 0; i < neighbors.size(); i++){
+        sendto(sockfd, (char *)&lsp, sizeOfLSP, 0,
+            (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
+    }
+
+}
+
+void LS_Router::generateLSP()
+{
+    struct timespec startOffsetSleep;
+    startOffsetSleep.tv_sec = (myNodeID*STAGGER_TIME) / NS_PER_SEC;
+    startOffsetSleep.tv_nsec = (myNodeID*STAGGER_TIME) % NS_PER_SEC;
+
+    nanosleep(&startOffsetSleep, 0);
+
+    struct timespec sleepFor;
+    sleepFor.tv_sec = 5;
+    sleepFor.tv_nsec = 0;       // 500 * 1000 * 1000;   // 500 ms
+
+    while(1){
+        sendFullLSP();
+        nanosleep(&sleepFor, 0);
     }
 }
 
@@ -65,16 +111,8 @@ void LS_Router::announceToNeighbors()
     sleepFor.tv_sec = 0;
     sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
 
-    int counter = 0;
-
-    while(1)
-    {
+    while(1){
         hackyBroadcast("HEREIAM", 7);
-        if(counter == 3){
-            sendLSP();
-            counter = 0;
-        }
-        counter++;
         nanosleep(&sleepFor, 0);
     }
 }
@@ -87,14 +125,13 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
     int producerNode = ntohl(lspNetwork->producerNode);
     int numLinks = ntohl(lspNetwork->numLinks);
 
-    // network->resetNodeInfo(producerNode);
     for(int i = 0; i < numLinks; i++){
         int neighbor = ntohl(lspNetwork->links[i].neighbor);
         lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
         lspStatus[neighbor] = true;
 #ifdef DEBUG
         int seqNum = ntohl(lspNetwork->sequenceNum);
-        lspLogger(seqNum, producerNode, neighbor, lspStatus[neighbor], lspCost[neighbor]);
+        lspLogger(seqNum, producerNode, neighbor, lspCost[neighbor]);
 #endif
     }
 
@@ -203,6 +240,8 @@ void LS_Router::listenForNeighbors()
             changedLock.unlock();
         }
 
+        checkHeartBeat();
+
         short int destID = 0;
         short int nextNode = 0;
         if(strncmp((const char*)recvBuf, (const char*)"send", 4) == 0) {
@@ -256,7 +295,7 @@ void LS_Router::listenForNeighbors()
         } else if(strncmp((const char*)recvBuf, (const char*)"cost", 4) == 0){
             //'cost'<4 ASCII bytes>, destID<net order 2 byte signed> newCost<net order 4 byte signed>
             destID = ntohs(((short int*)recvBuf)[2]);
-            int costNew = ntohs(*((int*)&(((char*)recvBuf)[6])));
+            short int costNew = ntohs(*((short int*)&(((char*)recvBuf)[6])));
 
             changedLock.lock();
             network->updateCost(costNew, myNodeID, destID);
@@ -281,8 +320,6 @@ void LS_Router::listenForNeighbors()
             }
         }
 
-        checkHeartBeat();
-
 #ifdef GRADE
         gettimeofday(&graphUpdateCheck, 0);
         if(graphUpdateCheck.tv_sec >= lastGraphUpdate.tv_sec + 5) {
@@ -293,13 +330,13 @@ void LS_Router::listenForNeighbors()
     }
 }
 
-void LS_Router::lspLogger(int seqNum, int from, int to, bool status, int weight)
+void LS_Router::lspLogger(int seqNum, int from, int to, int weight)
 {
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
-    sprintf(logLine, "seqNum %d, from %d, to %d, status %d, cost %d\n", seqNum, from, to, status, weight);
+    sprintf(logLine, "seqNum %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
     if(myNodeID == 0)
-        cout << logLine;
+        cout << "NODE: " << myNodeID << " " << logLine;
 
     // Write to logFile
     if(fwrite(logLine, 1, strlen(logLine), lspFileptr) != strlen(logLine)) {

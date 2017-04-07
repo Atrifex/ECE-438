@@ -117,7 +117,7 @@ int Router::logToFile(int log_type, short int dest, short int nexthop, char* mes
             return -1;
     }
 
-#ifdef DEBUG_LOG
+#ifdef LOG
     cout << logLine;
 #endif
 
