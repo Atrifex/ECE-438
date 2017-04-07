@@ -25,15 +25,15 @@ LS_Router::~LS_Router() {
 
 void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
 {
-    lsp.producerNode = htonl(myNodeID);
+    lsp.producerNode = (unsigned char) myNodeID;
     lsp.sequenceNum = htonl(++seqNums[myNodeID]);
 
     for(size_t i = 0; i < neighbors.size(); i++){
-        lsp.links[i].neighbor = htonl(neighbors[i]);
+        lsp.links[i].neighbor = (unsigned char) neighbors[i];
         lsp.links[i].weight = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
     }
 
-    lsp.numLinks = htonl(neighbors.size());
+    lsp.numLinks = (unsigned char) neighbors.size();
 }
 
 void LS_Router::sendLSChanges()
@@ -79,7 +79,7 @@ void LS_Router::sendFullLSP()
     createLSP(lsp, neighbors);
     changedLock.unlock();
 
-    int sizeOfLSP = neighbors.size()*sizeof(link_t) + 3*sizeof(int) + 4*sizeof(char);
+    int sizeOfLSP = neighbors.size()*sizeof(link_t) + sizeof(int) + 6*sizeof(char);
     for(size_t i = 0; i < neighbors.size(); i++){
         sendto(sockfd, (char *)&lsp, sizeOfLSP, 0,
             (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
@@ -122,11 +122,11 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
     vector<bool> lspStatus(NUM_NODES, false);
     vector<int> lspCost(NUM_NODES, INVALID);
 
-    int producerNode = ntohl(lspNetwork->producerNode);
-    int numLinks = ntohl(lspNetwork->numLinks);
+    unsigned char producerNode = lspNetwork->producerNode;
+    unsigned char numLinks = lspNetwork->numLinks;
 
     for(int i = 0; i < numLinks; i++){
-        int neighbor = ntohl(lspNetwork->links[i].neighbor);
+        unsigned char neighbor = lspNetwork->links[i].neighbor;
         lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
         lspStatus[neighbor] = true;
 #ifdef DEBUG
@@ -306,8 +306,8 @@ void LS_Router::listenForNeighbors()
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
             //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
-            int producerNode = ntohl(((int *)recvBuf)[1]);
-            int sequenceNum = ntohl(((int *)recvBuf)[2]);
+            unsigned char producerNode = ((lsp_t *)recvBuf)->producerNode;
+            int sequenceNum = ntohl(((lsp_t *)recvBuf)->sequenceNum);
             if(sequenceNum > seqNums[producerNode]){
                 seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
@@ -335,7 +335,7 @@ void LS_Router::lspLogger(int seqNum, int from, int to, int weight)
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
     sprintf(logLine, "seqNum %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
-    if(myNodeID == 0)
+    if(myNodeID == 255)
         cout << "NODE: " << myNodeID << " " << logLine;
 
     // Write to logFile

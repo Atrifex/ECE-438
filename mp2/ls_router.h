@@ -14,17 +14,19 @@ using std::rand;
 #define NS_PER_SEC 1000000000
 #define STAGGER_TIME 19531250
 
+#pragma pack(1)
 typedef struct {
-    int neighbor;
     int weight;
+    unsigned char neighbor;
 } link_t;
 
+#pragma pack(1)
 typedef struct {
     char header[4] = "lsp";
     // producerNode == source node for links
-    int producerNode;
     int sequenceNum;
-    int numLinks;
+    unsigned char producerNode;
+    unsigned char numLinks;
     link_t links[NUM_NODES];
 } lsp_t;
 

@@ -75,11 +75,11 @@ int Graph::getLinkCost(int from, int to){
     return cost[from][to];
 }
 
-int Graph::getLinkStatus(int from, int to){
+bool Graph::getLinkStatus(int from, int to){
     return valid[from][to];
 }
 
-bool Graph::updateAndCheckChanges(int producer, vector<bool> & lspStatus, vector<int> & lspCost)
+bool Graph::updateAndCheckChanges(unsigned char producer, vector<bool> & lspStatus, vector<int> & lspCost)
 {
     int changeStatus = false;
 

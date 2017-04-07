@@ -43,11 +43,13 @@ class Graph
 
         // get and set functions
         int getLinkCost(int from, int to);
-        int getLinkStatus(int from, int to);
-        bool updateAndCheckChanges(int producer, vector<bool> & lspStatus, vector<int> & lspCost);
+        bool getLinkStatus(int from, int to);
+
+        bool updateAndCheckChanges(unsigned char producer, vector<bool> & lspStatus, vector<int> & lspCost);
         bool updateStatus(bool status, int from, int to);
         bool updateCost(int linkCost, int from, int to);
         bool updateLink(bool status, int linkCost, int from, int to);
+
         void resetNodeInfo(int node);
         bool getClearChangeStatus();
 
