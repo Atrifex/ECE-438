@@ -14,7 +14,9 @@ using std::rand;
 using std::set;
 
 #define NS_PER_SEC 1000000000
-#define STAGGER_TIME 19531250
+#define STAGGER_TIME_LSP 19531250
+#define STAGGER_TIME_LSC 2343750
+#define NS_PER_MS 1000000
 
 #pragma pack(1)
 typedef struct {
@@ -67,15 +69,15 @@ class LS_Router : public Router
         void checkHeartBeat();
 
         // Functions to handle LSP
-        void sendLSC();
-        void createLSC(lsc_t & lsc);
-        void forwardLSC(char * LSC_Buf, int bytesRecvd, int heardFromNode);
         bool processLSC(lsc_t * lscNetwork);
+        void forwardLSC(char * LSC_Buf, int bytesRecvd, int heardFromNode);
+        void createLSC(lsc_t & lsc);
+        void sendLSC();
 
-        void sendLSP();
-        void createLSP(lsp_t & lsp, vector<int> & neighbors);
-        void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
         bool processLSP(lsp_t * lspNetwork);
+        void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
+        void createLSP(lsp_t & lsp, vector<int> & neighbors);
+        void sendLSP();
 
         // debug functions
         void lspLogger(int seqNum, int from, int to, int weight, int mode);
