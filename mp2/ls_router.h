@@ -6,10 +6,12 @@
 #include "graph.h"
 
 #include <ctime>
+#include <set>
 
 using std::time;
 using std::srand;
 using std::rand;
+using std::set;
 
 #define NS_PER_SEC 1000000000
 #define STAGGER_TIME 19531250
@@ -66,7 +68,9 @@ class LS_Router : public Router
 
         // Functions to handle LSP
         void sendLSC();
+        void createLSC(lsc_t & lsc);
         void forwardLSC(char * LSC_Buf, int heardFromNode);
+        bool processLSC(lsc_t * lscNetwork);
 
         void sendLSP();
         void createLSP(lsp_t & lsp, vector<int> & neighbors);
@@ -84,7 +88,7 @@ class LS_Router : public Router
         vector<int> changeSeqNums;
 
         // Neighbors that I need to broadcast about
-        queue<int> changeQueue;
+        set<int> changeSet;
 
         // debug vars
         FILE * lspFileptr;
