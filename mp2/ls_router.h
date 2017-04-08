@@ -30,6 +30,16 @@ typedef struct {
     link_t links[NUM_NODES];
 } lsp_t;
 
+#pragma pack(1)
+typedef struct {
+    char header[4] = "lsc";
+    int sequenceNum;
+    int weight;
+    unsigned char status;
+    unsigned char producerNode;
+    unsigned char neighbor;
+} linkChange_t;
+
 class LS_Router : public Router
 {
     public:
@@ -48,21 +58,26 @@ class LS_Router : public Router
         void checkHeartBeat();
 
         // Functions to handle LSP
-        void sendLSChanges();
-        void sendFullLSP();
+        void sendLSC();
+        void forwardLSC(char * LSC_Buf, int heardFromNode);
+
+        void sendLSP();
         void createLSP(lsp_t & lsp, vector<int> & neighbors);
         void forwardLSP(char * LSP_Buf, int bytesRecvd, int heardFromNode);
         bool processLSP(lsp_t * lspNetwork);
 
         // debug functions
-        void lspLogger(int seqNum, int from, int to, int weight);
+        void lspLogger(int seqNum, int from, int to, int weight, int mode);
 
         // Graph stores the current network topology
         Graph * network;
 
         // sequence numbers for LSP packets
         vector<int> seqNums;
-        queue<link_t> LSPQueue;
+        vector<int> changeSeqNums;
+
+        // Neighbors that I need to broadcast about
+        queue<int> changeQueue;
 
         // debug vars
         FILE * lspFileptr;

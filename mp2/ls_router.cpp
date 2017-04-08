@@ -4,6 +4,7 @@
 LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(id, logFileName) {
     network = new Graph(id, graphFileName);
     seqNums.resize(NUM_NODES, INVALID);
+    changeSeqNums.resize(NUM_NODES, INVALID);
     srand(id);
 
 #ifdef DEBUG
@@ -15,12 +16,60 @@ LS_Router::LS_Router(int id, char * graphFileName, char * logFileName) : Router(
         close(sockfd);
         exit(1);
     }
-    changed = false;
 #endif
 }
 
 LS_Router::~LS_Router() {
     delete network;
+}
+
+void LS_Router::forwardLSC(char * LSC_Buf, int heardFromNode)
+{
+    vector<int> neighbors;
+    network->getNeighbors(myNodeID, neighbors);
+
+    for(size_t i = 0; i < neighbors.size(); i++)
+    {
+        int nextNode = neighbors[i];
+
+        if(nextNode != heardFromNode){
+            sendto(sockfd, LSC_Buf, sizeof(linkChange_t), 0, (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+        }
+    }
+}
+
+void LS_Router::sendLSC()
+{
+    vector<int> neighbors;
+    linkChange_t lsc;
+    int node;
+
+    changedLock.lock();
+    if(changeQueue.empty()){
+        changedLock.unlock();
+        return;
+    } 
+    // get node with change from queue
+    node = changeQueue.front();
+    changeQueue.pop();
+
+    // get weight and cost
+    lsc.weight = htonl(network->getLinkCost(myNodeID, node));
+    lsc.status = (unsigned char) network->getLinkStatus(myNodeID, node);
+
+    network->getNeighbors(myNodeID, neighbors);
+    changedLock.unlock();
+
+    // initialize the rest of the lsc
+    lsc.sequenceNum = htonl(++changeSeqNums[myNodeID]);
+    lsc.producerNode = myNodeID;
+    lsc.neighbor = node;
+
+    for(size_t i = 0; i < neighbors.size(); i++){
+        sendto(sockfd, (char *)&lsc, sizeof(linkChange_t), 0,
+            (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
+    }
+
 }
 
 void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
@@ -36,40 +85,7 @@ void LS_Router::createLSP(lsp_t & lsp, vector<int> & neighbors)
     lsp.numLinks = (unsigned char) neighbors.size();
 }
 
-void LS_Router::sendLSChanges()
-{
-    static int counter = 0;
-
-    lsp_t lsp;
-    vector<int> neighbors;
-
-    changedLock.lock();
-    if(changed == false){
-        changedLock.unlock();
-        return;
-    }
-
-    network->getNeighbors(myNodeID, neighbors);
-    createLSP(lsp, neighbors);
-
-    if(counter >= 10){
-        counter = 0;
-        changed = false;
-    }else{
-        counter++;
-    }
-
-    changedLock.unlock();
-
-    int sizeOfLSP = neighbors.size()*sizeof(link_t) + 3*sizeof(int) + 4*sizeof(char);
-    for(size_t i = 0; i < neighbors.size(); i++){
-        sendto(sockfd, (char *)&lsp, sizeOfLSP, 0,
-            (struct sockaddr *)&globalNodeAddrs[neighbors[i]], sizeof(globalNodeAddrs[neighbors[i]]));
-    }
-
-}
-
-void LS_Router::sendFullLSP()
+void LS_Router::sendLSP()
 {
     lsp_t lsp;
     vector<int> neighbors;
@@ -100,7 +116,7 @@ void LS_Router::generateLSP()
     sleepFor.tv_nsec = 0;       // 500 * 1000 * 1000;   // 500 ms
 
     while(1){
-        sendFullLSP();
+        sendLSP();
         nanosleep(&sleepFor, 0);
     }
 }
@@ -111,8 +127,17 @@ void LS_Router::announceToNeighbors()
     sleepFor.tv_sec = 0;
     sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
 
+    int counter = -1;
+
     while(1){
         hackyBroadcast("HEREIAM", 7);
+        if(counter >= 2){ // send every 900 ms
+            sendLSC();
+            counter = 0;
+        } else{
+            counter++;
+        }
+
         nanosleep(&sleepFor, 0);
     }
 }
@@ -131,7 +156,7 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
         lspStatus[neighbor] = true;
 #ifdef DEBUG
         int seqNum = ntohl(lspNetwork->sequenceNum);
-        lspLogger(seqNum, producerNode, neighbor, lspCost[neighbor]);
+        lspLogger(seqNum, producerNode, neighbor, lspCost[neighbor], 0);
 #endif
     }
 
@@ -160,6 +185,8 @@ void LS_Router::updateForwardingTable()
     for(int i = 0; i < NUM_NODES; i++){
         if(predecessor[i] == INVALID){
             forwardingTable[i] = INVALID;
+            seqNums[i] = INVALID;
+            changeSeqNums[i] = INVALID;
             continue;
         }
 
@@ -191,10 +218,11 @@ void LS_Router::checkHeartBeat()
 
         if(cur_time - lastHeartbeat_usec > HEARTBEAT_THRESHOLD)
         {
-            changed = true;
+            changeQueue.push(nextNode);
             network->updateStatus(false, myNodeID, nextNode);
             network->updateStatus(false, nextNode, myNodeID);
             seqNums[nextNode] = INVALID;
+            changeSeqNums[nextNode] = INVALID;
         }
     }
     changedLock.unlock();
@@ -234,7 +262,7 @@ void LS_Router::listenForNeighbors()
 
             changedLock.lock();
             if(network->getLinkStatus(myNodeID, heardFromNode) == false){
-                changed = true;
+                changeQueue.push(heardFromNode);
             }
             network->updateStatus(true, myNodeID, heardFromNode);
             changedLock.unlock();
@@ -300,25 +328,45 @@ void LS_Router::listenForNeighbors()
             changedLock.lock();
             network->updateCost(costNew, myNodeID, destID);
             if(network->getLinkStatus(myNodeID, destID) == true){
-                changed = true;
+                changeQueue.push(destID);
             }
             changedLock.unlock();
 
         } else if(strcmp((const char*)recvBuf, (const char*)"lsp") == 0){
             //'lsp\0'<4 ASCII bytes>, rest of lsp_t struct
+
             unsigned char producerNode = ((lsp_t *)recvBuf)->producerNode;
             int sequenceNum = ntohl(((lsp_t *)recvBuf)->sequenceNum);
             if(sequenceNum > seqNums[producerNode]){
                 seqNums[producerNode] = sequenceNum;
                 forwardLSP((char *)recvBuf, bytesRecvd, heardFromNode);
-                bool changeInter = processLSP((lsp_t *)recvBuf);
+                processLSP((lsp_t *)recvBuf);
+            }
+        } else if(strcmp((const char*)recvBuf, (const char*)"lsc") == 0){
+            //'lsc\0'<4 ASCII bytes>, rest of linkChange_t struct
 
-                changedLock.lock();
-                if(changeInter == true)
-                    changed = true;
-                changedLock.unlock();
+            linkChange_t * lscNetwork = (linkChange_t*)recvBuf;
+            unsigned char producerNode = lscNetwork->producerNode;
+            int sequenceNum = ntohl(lscNetwork->sequenceNum);
+            if(sequenceNum > changeSeqNums[producerNode]){
+                changeSeqNums[producerNode] = sequenceNum;
+
+                unsigned char neighbor = lscNetwork->neighbor;
+                int weight = ntohl(lscNetwork->weight);
+                bool status = (bool)lscNetwork->status;
+
+                network->updateLink(status, weight, producerNode, neighbor);
+
+                forwardLSC((char *)recvBuf, heardFromNode);
+
+                if(status == false) updateForwardingTable();
+
+#ifdef DEBUG
+                lspLogger(sequenceNum, producerNode, neighbor, weight, 1);
+#endif
             }
         }
+
 
 #ifdef GRADE
         gettimeofday(&graphUpdateCheck, 0);
@@ -330,12 +378,16 @@ void LS_Router::listenForNeighbors()
     }
 }
 
-void LS_Router::lspLogger(int seqNum, int from, int to, int weight)
+void LS_Router::lspLogger(int seqNum, int from, int to, int weight, int mode)
 {
     char logLine[256]; // Message is <= 100 bytes, so this is always enough
 
-    sprintf(logLine, "seqNum %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
-    if(myNodeID == 255)
+    if(mode == 0)
+        sprintf(logLine, "LSP:: seqNum %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
+    else
+        sprintf(logLine, "LSC:: __changeSeqNum__ %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
+
+    if(myNodeID == 0)
         cout << "NODE: " << myNodeID << " " << logLine;
 
     // Write to logFile
