@@ -15,7 +15,7 @@ using std::set;
 
 #define NS_PER_SEC 1000000000
 #define STAGGER_TIME_LSP 19531250
-#define STAGGER_TIME_LSC 2343750
+#define STAGGER_TIME_LSC 3515625
 #define NS_PER_MS 1000000
 
 #pragma pack(1)

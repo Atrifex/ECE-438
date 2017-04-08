@@ -114,30 +114,32 @@ void LS_Router::announceToNeighbors()
     sleepFor.tv_sec = 0;
     sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
 
-    struct timespec staggerSleepSetup;
-    staggerSleepSetup.tv_sec = 0;
-    staggerSleepSetup.tv_nsec = (myNodeID*STAGGER_TIME_LSC) % (300*NS_PER_MS);
+    struct timespec timeSlotSetup;
+    timeSlotSetup.tv_sec = 0;
+    timeSlotSetup.tv_nsec = (myNodeID*STAGGER_TIME_LSC) % (300*NS_PER_MS);
 
-    struct timespec staggerSleepHold;
-    staggerSleepHold.tv_sec = 0;
-    staggerSleepHold.tv_nsec = (300*NS_PER_MS) - ((myNodeID*STAGGER_TIME_LSC) % (300*NS_PER_MS));
-
+    struct timespec timeSlotHold;
+    timeSlotHold.tv_sec = 0;
+    timeSlotHold.tv_nsec = (300*NS_PER_MS) - ((myNodeID*STAGGER_TIME_LSC) % (300*NS_PER_MS));
 
     long long staggerSleepTotal = (myNodeID*STAGGER_TIME_LSC) % NS_PER_SEC;
 
+    hackyBroadcast("HEREIAM", 7);
+    nanosleep(&sleepFor, 0);
+
     while(1){
-        hackyBroadcast("HEREIAM", 7);
-        nanosleep(&sleepFor, 0);
-
-        if(staggerSleepTotal >= (300*NS_PER_MS)){
-            hackyBroadcast("HEREIAM", 7);
-            nanosleep(&sleepFor, 0);
+        for(int i = 1; i <= 3; i++){
+            if(staggerSleepTotal >= (i*300*NS_PER_MS)
+                || staggerSleepTotal < ((i-1)*300*NS_PER_MS)){
+                hackyBroadcast("HEREIAM", 7);
+                nanosleep(&sleepFor, 0);
+            }else{
+                hackyBroadcast("HEREIAM", 7);
+                nanosleep(&timeSlotSetup, 0);
+                sendLSC();
+                nanosleep(&timeSlotHold, 0);
+            }
         }
-
-        hackyBroadcast("HEREIAM", 7);
-        nanosleep(&staggerSleepSetup, 0);
-        sendLSC();
-        nanosleep(&staggerSleepHold, 0);
     }
 }
 
