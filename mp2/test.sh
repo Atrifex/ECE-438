@@ -37,6 +37,23 @@ do
             exit
             shift; shift; shift;
             ;;
+        --test-mesg)
+            sh ./scripts/run.sh
+            sleep 5s
+            ./manager_send $2 send $3 "________MESSAGE________"
+            sleep 5s
+            killall ls_router
+            exit
+            ;;
+        --test-mesg-new)
+            python ./scripts/generateTopology.py
+            sh ./scripts/run.sh ./topology/ nodecosts networkTopology.txt
+            sleep 5s
+            ./manager_send $2 send $3 "________MESSAGE________"
+            sleep 5s
+            killall ls_router
+            exit
+            ;;
         --test-fb)
             sh ./scripts/run.sh
             sleep 5s
