@@ -23,7 +23,7 @@ LS_Router::~LS_Router() {
     delete network;
 }
 
-void LS_Router::forwardLSC(char * LSC_Buf, int heardFromNode)
+void LS_Router::forwardLSC(char * LSC_Buf, int bytesRecvd, int heardFromNode)
 {
     vector<int> neighbors;
     network->getNeighbors(myNodeID, neighbors);
@@ -33,7 +33,7 @@ void LS_Router::forwardLSC(char * LSC_Buf, int heardFromNode)
         int nextNode = neighbors[i];
 
         if(nextNode != heardFromNode){
-            sendto(sockfd, LSC_Buf, sizeof(linkChange_t), 0, (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
+            sendto(sockfd, LSC_Buf, bytesRecvd, 0, (struct sockaddr *)&globalNodeAddrs[nextNode], sizeof(globalNodeAddrs[nextNode]));
         }
     }
 }
@@ -382,7 +382,7 @@ void LS_Router::listenForNeighbors()
             if(sequenceNum > changeSeqNums[producerNode]){
                 changeSeqNums[producerNode] = sequenceNum;
 
-                forwardLSC((char *)recvBuf, heardFromNode);
+                forwardLSC((char *)recvBuf, bytesRecvd, heardFromNode);
                 if(processLSC(lscNetwork) == true){}
                     //updateForwardingTable();
             }

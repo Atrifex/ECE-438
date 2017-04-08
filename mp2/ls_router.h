@@ -69,7 +69,7 @@ class LS_Router : public Router
         // Functions to handle LSP
         void sendLSC();
         void createLSC(lsc_t & lsc);
-        void forwardLSC(char * LSC_Buf, int heardFromNode);
+        void forwardLSC(char * LSC_Buf, int bytesRecvd, int heardFromNode);
         bool processLSC(lsc_t * lscNetwork);
 
         void sendLSP();
