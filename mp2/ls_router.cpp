@@ -127,17 +127,15 @@ void LS_Router::announceToNeighbors()
     sleepFor.tv_sec = 0;
     sleepFor.tv_nsec = 300 * 1000 * 1000;   //300 ms
 
-    int counter = -1;
-
     while(1){
         hackyBroadcast("HEREIAM", 7);
-        if(counter >= 2){ // send every 900 ms
-            sendLSC();
-            counter = 0;
-        } else{
-            counter++;
-        }
+        nanosleep(&sleepFor, 0);
 
+        hackyBroadcast("HEREIAM", 7);
+        sendLSC();
+        nanosleep(&sleepFor, 0);
+
+        hackyBroadcast("HEREIAM", 7);
         nanosleep(&sleepFor, 0);
     }
 }
@@ -185,8 +183,6 @@ void LS_Router::updateForwardingTable()
     for(int i = 0; i < NUM_NODES; i++){
         if(predecessor[i] == INVALID){
             forwardingTable[i] = INVALID;
-            seqNums[i] = INVALID;
-            changeSeqNums[i] = INVALID;
             continue;
         }
 
@@ -359,7 +355,7 @@ void LS_Router::listenForNeighbors()
 
                 forwardLSC((char *)recvBuf, heardFromNode);
 
-                if(status == false) updateForwardingTable();
+                //if(status == false) updateForwardingTable();
 
 #ifdef DEBUG
                 lspLogger(sequenceNum, producerNode, neighbor, weight, 1);
@@ -387,7 +383,7 @@ void LS_Router::lspLogger(int seqNum, int from, int to, int weight, int mode)
     else
         sprintf(logLine, "LSC:: __changeSeqNum__ %d, from %d, to %d, cost %d\n", seqNum, from, to, weight);
 
-    if(myNodeID == 0)
+    if(myNodeID == 1)
         cout << "NODE: " << myNodeID << " " << logLine;
 
     // Write to logFile
