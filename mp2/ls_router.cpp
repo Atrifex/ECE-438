@@ -38,6 +38,40 @@ void LS_Router::forwardLSC(char * LSC_Buf, int heardFromNode)
     }
 }
 
+bool LS_Router::processLSC(lsc_t * lspNetwork)
+{
+    vector<bool> lspStatus(NUM_NODES, false);
+    vector<int> lspCost(NUM_NODES, INVALID);
+
+    unsigned char producerNode = lspNetwork->producerNode;
+    unsigned char numLinks = lspNetwork->numLinks;
+
+    for(int i = 0; i < numLinks; i++){
+        unsigned char neighbor = lspNetwork->links[i].neighbor;
+        lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
+        lspStatus[neighbor] = true;
+#ifdef DEBUG
+        int seqNum = ntohl(lspNetwork->sequenceNum);
+        lspLogger(seqNum, producerNode, neighbor, lspCost[neighbor], 0);
+#endif
+    }
+
+    return network->updateAndCheckChanges(producerNode, lspStatus, lspCost);
+}
+
+void LS_Router::createLSC(lsc_t & lsc)
+{
+    lsc.producerNode = (unsigned char) myNodeID;
+    lsc.sequenceNum = htonl(++changeSeqNums[myNodeID]);
+
+    for(size_t i = 0; i < neighbors.size(); i++){
+        lsc.links[i].neighbor = (unsigned char) neighbors[i];
+        lsc.links[i].weight = htonl((int)network->getLinkCost(myNodeID, neighbors[i]));
+    }
+
+    lsc.numLinks = (unsigned char) neighbors.size();
+}
+
 void LS_Router::sendLSC()
 {
     vector<int> neighbors;
@@ -48,7 +82,7 @@ void LS_Router::sendLSC()
     if(changeQueue.empty()){
         changedLock.unlock();
         return;
-    } 
+    }
     // get node with change from queue
     node = changeQueue.front();
     changeQueue.pop();

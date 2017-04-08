@@ -32,13 +32,20 @@ typedef struct {
 
 #pragma pack(1)
 typedef struct {
-    char header[4] = "lsc";
-    int sequenceNum;
     int weight;
     unsigned char status;
-    unsigned char producerNode;
     unsigned char neighbor;
 } linkChange_t;
+
+#pragma pack(1)
+typedef struct {
+    char header[4] = "lsc";
+    int sequenceNum;
+    unsigned char producerNode;
+    unsigned char numLinks;
+    linkChange_t links[NUM_NODES];
+} lsc_t;
+
 
 class LS_Router : public Router
 {
