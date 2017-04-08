@@ -93,7 +93,6 @@ class LS_Router : public Router
         // debug vars
         FILE * lspFileptr;
 
-        bool changed;
         mutex changedLock;
 };
 

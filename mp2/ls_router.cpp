@@ -56,8 +56,9 @@ bool LS_Router::processLSC(lsc_t * lscNetwork)
 
 #ifdef DEBUG
         int seqNum = ntohl(lscNetwork->sequenceNum);
-        lspLogger(seqNum, producerNode, neighbor, weight, 1;
+        lspLogger(seqNum, producerNode, neighbor, weight, 1);
 #endif
+
     }
 
     return failed;
@@ -72,9 +73,9 @@ void LS_Router::createLSC(lsc_t & lsc)
 
     int i = 0;
     for(int node : changeSet){
-        lsc.links[i].weight = htonl((int)network->getLinkCost(myNodeID, node);
+        lsc.links[i].weight = htonl((int)network->getLinkCost(myNodeID, node));
         lsc.links[i].status = (unsigned char) network->getLinkStatus(myNodeID, node);
-        lsc.links[i].neighbor = (unsigned char) neighbors[i];
+        lsc.links[i].neighbor = (unsigned char) node;
         i++;
     }
 }
@@ -185,10 +186,12 @@ bool LS_Router::processLSP(lsp_t * lspNetwork)
         unsigned char neighbor = lspNetwork->links[i].neighbor;
         lspCost[neighbor] = ntohl(lspNetwork->links[i].weight);
         lspStatus[neighbor] = true;
+
 #ifdef DEBUG
         int seqNum = ntohl(lspNetwork->sequenceNum);
         lspLogger(seqNum, producerNode, neighbor, lspCost[neighbor], 0);
 #endif
+
     }
 
     return network->updateAndCheckChanges(producerNode, lspStatus, lspCost);
@@ -373,7 +376,7 @@ void LS_Router::listenForNeighbors()
         } else if(strcmp((const char*)recvBuf, (const char*)"lsc") == 0){
             //'lsc\0'<4 ASCII bytes>, rest of linkChange_t struct
 
-            linkChange_t * lscNetwork = (linkChange_t*)recvBuf;
+            lsc_t * lscNetwork = (lsc_t*)recvBuf;
             unsigned char producerNode = lscNetwork->producerNode;
             int sequenceNum = ntohl(lscNetwork->sequenceNum);
             if(sequenceNum > changeSeqNums[producerNode]){
