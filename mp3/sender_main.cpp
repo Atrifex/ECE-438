@@ -1,5 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
+
+#include "parameters.h"
+#include "types.h"
 
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
 }
@@ -16,8 +17,6 @@ int main(int argc, char** argv)
 	}
 	udpPort = (unsigned short int)atoi(argv[2]);
 	numBytes = atoll(argv[4]);
-
-	
 
 	reliablyTransfer(argv[1], udpPort, argv[3], numBytes);
 }

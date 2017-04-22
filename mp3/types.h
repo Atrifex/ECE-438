@@ -1,5 +1,5 @@
-#ifndef PARAMETERS_H
-#define PARAMETERS_H
+#ifndef TYPES_H
+#define TYPES_H
 
 #include <cstdlib>
 #include <stdio.h>
@@ -39,12 +39,16 @@ typedef pair<int,int> int_pair;
 
 
 typedef struct {
-    // TODO
-} packet_t;
+    unsigned char seqNum;
+} msg_header_t;
 
+typedef struct {
+    msg_header_t header;
+    unsigned char msg[PAYLOAD - sizeof(msg_header_t)];
+} msg_packet_t;
 
-
-
-
+typedef struct {
+    
+} ack_packet_t;
 
 #endif

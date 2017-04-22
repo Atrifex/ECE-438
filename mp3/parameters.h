@@ -5,7 +5,8 @@
 
 #define SWS (TODO)
 #define RWS (SWS)
-
 #define MAX_WINDOW_SIZE (TODO)
+
+#define PAYLOAD (1472)
 
 #endif

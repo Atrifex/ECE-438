@@ -8,10 +8,13 @@ class CircularBuffer
 {
     public:
         // Constructor
-        CircularBuffer(int sizes);
+        CircularBuffer(int size);
 
     private:
-        vector<packet>
+        // Current start index in buffer
+        int startIdx;
+        
+        vector<packet_t> buffer;
 };
 
 
