@@ -1,7 +1,9 @@
 
-#include "send_buffer.h"
+#include "circular_buffer.h"
 
-SendBuffer::SendBuffer(int size, char * filename, unsigned long long int bytesToSend)
+
+/*************** Send Buffer ***************/
+CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int bytesToSend)
 {
     sourcefile = std::ifstream(filename, std::ios::in);
     if (!(sourcefile.is_open())) {
@@ -20,7 +22,7 @@ SendBuffer::SendBuffer(int size, char * filename, unsigned long long int bytesTo
     bytesToTransfer = min((unsigned long long)length, bytesToSend);
 }
 
-void SendBuffer::fill()
+void CircularBuffer::fill()
 {
     size_t j = startIdx;
     for(size_t i = 0; i < data.size(); i++) {
@@ -36,6 +38,39 @@ void SendBuffer::fill()
             // book keeping
             state[j] = filled;
             bytesToTransfer -= length;
+        }
+        j = (j+1)%data.size();
+    }
+}
+
+/*************** Receive Buffer ***************/
+CircularBuffer::CircularBuffer(int size, char * filename)
+{
+    destfile = std::ofstream(filename, std::ios::out);
+    if (!destfile.is_open()) {
+        perror("file open error");
+        exit(1);
+    }
+
+    state.resize(size, waiting);
+    data.resize(size);
+
+    seqNum = 0;
+    startIdx = 0;
+}
+
+void CircularBuffer::flush()
+{
+    size_t j = startIdx;
+    for(size_t i = 0; i < data.size(); i++) {
+        if(state[j] == received){
+            // write to file
+            int length = ntohs(data[j].header.length);
+            destfile.write(data[j].msg, length);
+
+            // book keeping
+            state[j] = waiting;
+            startIdx++;
         }
         j = (j+1)%data.size();
     }

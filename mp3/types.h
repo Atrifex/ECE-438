@@ -64,18 +64,15 @@ typedef struct {
 
 
 typedef enum : uint8_t {
+    /***** Sender States *****/
     available,
     filled,
     sent,
-    acked
-} sendState_t;
+    acked,
 
-typedef enum : uint8_t {
+    /***** Receiver States *****/
     waiting,
     received
-} receiveState_t;
-
-
-
+} state_t;
 
 #endif

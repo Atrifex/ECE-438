@@ -4,7 +4,7 @@
  *
  */
 
-#include "tcp_sender.h"
+#include "tcp.h"
 
 int main(int argc, char** argv) {
 	if(argc != 5) {
@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 	}
 
 	// setup sender connection
-	TCPSender connection(argv[1], argv[2]);
+	TCP connection(argv[1], argv[2]);
 
 	// send file
 	connection.reliableSend(argv[3], atoll(argv[4]));

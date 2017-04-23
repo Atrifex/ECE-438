@@ -5,7 +5,7 @@
  *
  */
 
-#include "tcp_receiver.h"
+#include "tcp.h"
 
 int main(int argc, char** argv) {
 
@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
 
 
 	// setup receiver connection
-	TCPReceiver connection(argv[1]);
+	TCP connection(argv[1]);
 
 	// receive file
 	connection.reliableReceive(argv[2]);
