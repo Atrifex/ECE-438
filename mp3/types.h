@@ -10,13 +10,18 @@
 #include <queue>
 #include <stack>
 #include <utility>
-#include <string>
 #include <mutex>
 #include <thread>
 #include <chrono>
 #include <functional>
 #include <atomic>
-#include "ls_router.h"
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 using std::thread;
 using std::ref;
@@ -48,7 +53,7 @@ typedef struct {
 } msg_packet_t;
 
 typedef struct {
-    
+    unsigned char ack;
 } ack_packet_t;
 
 #endif

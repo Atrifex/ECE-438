@@ -1,19 +1,18 @@
 
 #include "tcp.h"
 
-TCP::TCP()
+TCP::TCP(char * hostname, char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
-	int numbytes;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
-    if ((rv = getaddrinfo(argv[1], SERVERPORT, &hints, &servinfo)) != 0) {
+    if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
+		exit(1);
 	}
 
     // loop through all the results and make a socket
@@ -29,15 +28,24 @@ TCP::TCP()
 			perror("listener: bind");
 			continue;
 		}
-        
+
         break;
     }
 
     if (p == NULL) {
         fprintf(stderr, "failed to bind socket\n");
-        return 2;
+        exit(2);
     }
 
-    freeaddrinfo(servinfo);
+	// Need when you call sendto
+	saddr = *(p->ai_addr);
 
+    freeaddrinfo(servinfo);
+}
+
+
+
+void TCP::send(char* filename, unsigned long long int bytesToTransfer)
+{
+	
 }
