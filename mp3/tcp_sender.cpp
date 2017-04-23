@@ -1,7 +1,7 @@
 
-#include "tcp.h"
+#include "tcp_sender.h"
 
-TCP::TCP(char * hostname, char * hostUDPport)
+TCPSender::TCPSender(char * hostname, char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
@@ -41,11 +41,30 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	saddr = *(p->ai_addr);
 
     freeaddrinfo(servinfo);
+
+
+}
+
+void TCPSender::sendWindow()
+{
+	for(size_t i = 0; i < buffer.data.size(); i++) {
+		if(buffer.state[i] == filled){
+			sendto(sockfd, (char *)&(buffer.data[i]), sizeof(msg_packet_t), 0, &saddr, sizeof(saddr));
+			buffer.state[i] = sent;
+		}
+	}
 }
 
 
-
-void TCP::send(char* filename, unsigned long long int bytesToTransfer)
+void TCPSender::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
-	
+	buffer = SendBuffer(SWS, filename, bytesToTransfer);
+
+
+	// fill
+
+	// send
+
+	// wait for ack
+
 }

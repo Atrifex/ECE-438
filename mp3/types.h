@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <cstdlib>
+#include <algorithm>
 #include <stdio.h>
 #include <iostream>
 #include <string>
@@ -22,6 +23,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <fstream>
 
 using std::thread;
 using std::ref;
@@ -39,21 +41,36 @@ using std::stack;
 using std::string;
 using std::to_string;
 using std::mutex;
+using std::ifstream;
+using std::min;
 
 typedef pair<int,int> int_pair;
 
 
 typedef struct {
-    unsigned char seqNum;
+    uint32_t seqNum;
+    uint16_t length;
 } msg_header_t;
 
 typedef struct {
     msg_header_t header;
-    unsigned char msg[PAYLOAD - sizeof(msg_header_t)];
+    char msg[PAYLOAD - sizeof(msg_header_t)];
 } msg_packet_t;
 
 typedef struct {
-    unsigned char ack;
+    uint32_t ack;
 } ack_packet_t;
+
+
+typedef enum : uint8_t
+{
+    available,
+    filled,
+    sent,
+    acked
+} sendState_t;
+
+
+
 
 #endif

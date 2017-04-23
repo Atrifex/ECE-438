@@ -5,7 +5,7 @@
  *
  */
 
-#include "tcp.h"
+#include "tcp_receiver.h"
 
 int main(int argc, char** argv) {
 
@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
 
 
 	// // setup receiver connection
-	// TCP connection(argv[1]);
+	// TCPReceive connection(argv[1]);
 	//
 	// // receive file
 	// connection.receive(argv[2]);
