@@ -58,7 +58,7 @@ typedef struct {
 } msg_packet_t;
 
 typedef struct {
-    uint32_t ack;
+    uint32_t seqNum;
 } ack_packet_t;
 
 

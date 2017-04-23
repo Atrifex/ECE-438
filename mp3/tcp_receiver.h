@@ -5,7 +5,7 @@
 #include "types.h"
 #include "send_buffer.h"
 
-class TCPSender
+class TCPReceiver
 {
     public:
         // Constructors
@@ -13,12 +13,8 @@ class TCPSender
 
         // Public Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
-    private:
-        // Private Member Functions
         void sendWindow();
-        void setupConnection();
-        void tearDownConnection();
-
+    private:
         // socket communication
         int sockfd;
         struct sockaddr saddr;

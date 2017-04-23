@@ -10,4 +10,9 @@
 
 #define RTT (1000000)  // 1000 ms is
 
+#define COM_RANGE           (32768)
+#define SYN_HEADER          (COM_RANGE - 1)
+#define SYN_ACK_HEADER      (COM_RANGE - 2)
+#define FIN_HEADER          (COM_RANGE - 3)
+
 #endif

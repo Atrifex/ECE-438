@@ -60,7 +60,6 @@ void TCPSender::reliableSend(char * filename, unsigned long long int bytesToTran
 	buffer = SendBuffer(SWS, filename, bytesToTransfer);
 
 	// Set up TCP connection
-	setupConnection();
 
 	while(1){
 		// fill
@@ -73,36 +72,13 @@ void TCPSender::reliableSend(char * filename, unsigned long long int bytesToTran
 	}
 
 	// tear down TCP connection
-	tearDownConnection();
 
 }
 
 
-void TCPSender::setupConnection()
-{
-	// construct buffer
-	msg_header_t syn;
-	syn.seqNum = htonl(0);
-	syn.length = htons(SYN_HEADER);
 
-	// send
-	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &saddr, sizeof(saddr));
 
-	// wait for ack + syn
-    struct sockaddr_in senderAddr;
-    socklen_t senderAddrLen = sizeof(senderAddr);
-    if (recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t), 0, (struct sockaddr*)&senderAddr, &senderAddrLen) == -1) {
-        perror("connectivity listener: recvfrom failed");
-        exit(1);
-    }
 
-	// send ack
-	ack_packet_t ack;
-	ack.seqNum = htonl(0);
-	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &saddr, sizeof(saddr));
-}
 
-void tearDownConnection()
-{
 
-}
+//
