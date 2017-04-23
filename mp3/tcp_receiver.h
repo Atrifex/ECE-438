@@ -1,26 +1,26 @@
-#ifndef TCP_H
-#define TCP_H
+#ifndef TCP_RECEIVER_H
+#define TCP_RECEIVER_H
 
 #include "parameters.h"
 #include "types.h"
-#include "send_buffer.h"
+#include "receive_buffer.h"
 
 class TCPReceiver
 {
     public:
         // Constructors
-        TCPSender(char * hostname, char * hostUDPport);
+        TCPReceiver(char * hostname, char * hostUDPport);
 
         // Public Member Functions
-        void reliableSend(char * filename, unsigned long long int bytesToTransfer);
-        void sendWindow();
+        void reliableReceive(char * filename);
+        void receiveWindow();
     private:
         // socket communication
         int sockfd;
         struct sockaddr saddr;
 
         // Circular buffer that contains packets
-        SendBuffer buffer;
+        ReceiveBuffer buffer;
 
         // Book keeping
 };

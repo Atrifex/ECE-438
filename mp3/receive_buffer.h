@@ -1,27 +1,25 @@
-#ifndef SEND_BUFFER_H
-#define SEND_BUFFER_H
+#ifndef RECEIVE_BUFFER_H
+#define RECEIVE_BUFFER_H
 
 #include "parameters.h"
 #include "types.h"
 
-class SendBuffer
+class ReceiveBuffer
 {
     public:
         // Constructor
-        SendBuffer(){}
-        SendBuffer(int size, char * filename, unsigned long long int bytesToSend);
+        ReceiveBuffer(){}
+        ReceiveBuffer(int size, char * filename);
 
         // Public member function
-        void fill();
+        void flush();
 
         int startIdx;
         int seqNum;
-        vector<sendState_t> state;
+        vector<receiveState_t> state;
         vector<msg_packet_t> data;
-        unsigned long long int bytesToTransfer;
-
     private:
-        ifstream sourcefile;
+        ofstream destfile;
 };
 
 

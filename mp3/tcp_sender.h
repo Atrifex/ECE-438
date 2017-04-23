@@ -1,5 +1,5 @@
-#ifndef TCP_H
-#define TCP_H
+#ifndef TCP_SENDER_H
+#define TCP_SENDER_H
 
 #include "parameters.h"
 #include "types.h"

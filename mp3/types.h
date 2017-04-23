@@ -42,6 +42,7 @@ using std::string;
 using std::to_string;
 using std::mutex;
 using std::ifstream;
+using std::ofstream;
 using std::min;
 
 typedef pair<int,int> int_pair;
@@ -62,13 +63,17 @@ typedef struct {
 } ack_packet_t;
 
 
-typedef enum : uint8_t
-{
+typedef enum : uint8_t {
     available,
     filled,
     sent,
     acked
 } sendState_t;
+
+typedef enum : uint8_t {
+    waiting,
+    received
+} receiveState_t;
 
 
 

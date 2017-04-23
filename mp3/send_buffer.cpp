@@ -22,19 +22,21 @@ SendBuffer::SendBuffer(int size, char * filename, unsigned long long int bytesTo
 
 void SendBuffer::fill()
 {
+    size_t j = startIdx;
     for(size_t i = 0; i < data.size(); i++) {
-        if(state[i] == available && bytesToTransfer > 0){
+        if(state[j] == available && bytesToTransfer > 0){
             int length = min((unsigned long long)PAYLOAD, bytesToTransfer);
 
             // initialize header
-            data[i].header.seqNum = htonl(seqNum++);
-            data[i].header.length = htons(length);
+            data[j].header.seqNum = htonl(seqNum++);
+            data[j].header.length = htons(length);
 
-            sourcefile.read(data[i].msg, length);
+            sourcefile.read(data[j].msg, length);
 
             // book keeping
-            state[i] = filled;
+            state[j] = filled;
             bytesToTransfer -= length;
         }
+        j = (j+1)%data.size();
     }
 }

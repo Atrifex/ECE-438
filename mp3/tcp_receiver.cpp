@@ -1,7 +1,7 @@
 
-#include "tcp_sender.h"
+#include "tcp_receiver.h"
 
-TCPSender::TCPSender(char * hostname, char * hostUDPport)
+TCPReceiver::TCPReceiver(char * hostname, char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
@@ -44,41 +44,31 @@ TCPSender::TCPSender(char * hostname, char * hostUDPport)
 
 }
 
-void TCPSender::sendWindow()
+void TCPReceiver::receiveWindow()
 {
-	for(size_t i = 0; i < buffer.data.size(); i++) {
-		if(buffer.state[i] == filled){
-			sendto(sockfd, (char *)&(buffer.data[i]), sizeof(msg_packet_t), 0, &saddr, sizeof(saddr));
-			buffer.state[i] = sent;
-		}
-	}
+
 }
 
 
-void TCPSender::reliableSend(char * filename, unsigned long long int bytesToTransfer)
+void TCPReceiver::reliableReceive(char * filename)
 {
-	buffer = SendBuffer(SWS, filename, bytesToTransfer);
+	buffer = ReceiveBuffer(SWS, filename);
 
 	// Set up TCP connection
 
 	while(1){
-		// fill
-		buffer.fill();
+		// receive
+		receiveWindow();
 
-		// send
-		sendWindow();
+		// send acks
 
-		// wait for ack
+		// flush
+		buffer.flush();
+
 	}
 
 	// tear down TCP connection
 
 }
-
-
-
-
-
-
 
 //

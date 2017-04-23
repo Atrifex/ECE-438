@@ -1,40 +1,34 @@
 
-#include "send_buffer.h"
+#include "receive_buffer.h"
 
-SendBuffer::SendBuffer(int size, char * filename, unsigned long long int bytesToSend)
+ReceiveBuffer::ReceiveBuffer(int size, char * filename)
 {
-    sourcefile = std::ifstream(filename, std::ios::in);
-    if (!(sourcefile.is_open())) {
-        std::cerr << "Unable to open source file\n";
+    destfile = std::ofstream(filename, std::ios::out);
+    if (!destfile.is_open()) {
+        perror("file open error");
+        exit(1);
     }
 
-    sourcefile.seekg (0, sourcefile.end);
-    int length = sourcefile.tellg();
-    sourcefile.seekg (0, sourcefile.beg);
-
-    state.resize(size, available);
+    state.resize(size, waiting);
     data.resize(size);
 
     seqNum = 0;
     startIdx = 0;
-    bytesToTransfer = min((unsigned long long)length, bytesToSend);
 }
 
-void SendBuffer::fill()
+void ReceiveBuffer::flush()
 {
+    size_t j = startIdx;
     for(size_t i = 0; i < data.size(); i++) {
-        if(state[i] == available && bytesToTransfer > 0){
-            int length = min((unsigned long long)PAYLOAD, bytesToTransfer);
-
-            // initialize header
-            data[i].header.seqNum = htonl(seqNum++);
-            data[i].header.length = htons(length);
-
-            sourcefile.read(data[i].msg, length);
+        if(state[j] == received){
+            // write to file
+            int length = ntohs(data[j].header.length);
+            destfile.write(data[j].msg, length);
 
             // book keeping
-            state[i] = filled;
-            bytesToTransfer -= length;
+            state[j] = waiting;
+            startIdx++;
         }
+        j = (j+1)%data.size();
     }
 }
