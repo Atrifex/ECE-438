@@ -10,10 +10,14 @@ class CircularBuffer
         // Constructor
         CircularBuffer(int size);
 
+        void fill();
+        void flush();
     private:
         // Current start index in buffer
         int startIdx;
-        
+
+        vector<bool> sent;
+        vector<bool> received;
         vector<packet_t> buffer;
 };
 

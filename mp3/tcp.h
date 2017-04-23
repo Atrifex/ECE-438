@@ -7,10 +7,17 @@
 class TCP
 {
     public:
-        TCP();
+        // Constructors
+        TCP(char* hostname, unsigned short int hostUDPport);
+
+        // Public Member Functions
+        void send(char* filename, unsigned long long int bytesToTransfer);
+        void receive();
+
 
     private:
         int sockfd;
+
 
 };
 

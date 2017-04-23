@@ -1,6 +1,6 @@
 
 #include "circular_buffer.h"
 
-CircularBuffer(int size){
+CircularBuffer::CircularBuffer(int size){
 
 }

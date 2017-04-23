@@ -3,27 +3,41 @@
 
 TCP::TCP()
 {
-    char myAddr[100];
-    struct sockaddr_in bindAddr;
+	struct addrinfo hints, *servinfo, *p;
+	int rv;
+	int numbytes;
 
-    //socket() and bind() our socket. We will do all sendto()ing and recvfrom()ing on this one.
-    if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket");
-        exit(1);
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+
+    if ((rv = getaddrinfo(argv[1], SERVERPORT, &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return 1;
+	}
+
+    // loop through all the results and make a socket
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                p->ai_protocol)) == -1) {
+            perror("socket");
+            continue;
+        }
+
+        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("listener: bind");
+			continue;
+		}
+        
+        break;
     }
 
-    // setup address for binding purposes
-    sprintf(myAddr, "10.1.1.%d", myNodeID);         // prints ip address to my addr
-    memset(&bindAddr, 0, sizeof(bindAddr));         // clears bindaddr
-    bindAddr.sin_family = AF_INET;
-    bindAddr.sin_port = htons(GLOBAL_COM_PORT);     // port for communication
-    inet_pton(AF_INET, myAddr, &bindAddr.sin_addr); // writing addr to sin_addr
-
-    // bind for listining
-    if(bind(sockfd, (struct sockaddr*)&bindAddr, sizeof(struct sockaddr_in)) < 0) {
-        perror("bind");
-        close(sockfd);
-        exit(1);
+    if (p == NULL) {
+        fprintf(stderr, "failed to bind socket\n");
+        return 2;
     }
+
+    freeaddrinfo(servinfo);
 
 }
