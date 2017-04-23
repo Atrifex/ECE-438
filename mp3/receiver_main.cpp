@@ -15,9 +15,9 @@ int main(int argc, char** argv) {
 	}
 
 
-	// // setup receiver connection
-	// TCPReceive connection(argv[1]);
-	//
-	// // receive file
-	// connection.receive(argv[2]);
+	// setup receiver connection
+	TCPReceiver connection(argv[1]);
+
+	// receive file
+	connection.reliableReceive(argv[2]);
 }

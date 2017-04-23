@@ -46,10 +46,12 @@ TCPSender::TCPSender(char * hostname, char * hostUDPport)
 
 void TCPSender::sendWindow()
 {
+	size_t j = buffer.startIdx;
 	for(size_t i = 0; i < buffer.data.size(); i++) {
-		if(buffer.state[i] == filled){
-			sendto(sockfd, (char *)&(buffer.data[i]), sizeof(msg_packet_t), 0, &saddr, sizeof(saddr));
-			buffer.state[i] = sent;
+		if(buffer.state[j] == filled){
+			sendto(sockfd, (char *)&(buffer.data[j]), sizeof(msg_packet_t), 0, &saddr, sizeof(saddr));
+			buffer.state[j] = sent;
+			j = (j + 1) % buffer.data.size();
 		}
 	}
 }
@@ -70,6 +72,7 @@ void TCPSender::reliableSend(char * filename, unsigned long long int bytesToTran
 		sendWindow();
 
 		// wait for ack
+		// TODO: increment startIdx
 	}
 
 	// tear down TCP connection

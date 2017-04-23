@@ -9,7 +9,7 @@ class TCPReceiver
 {
     public:
         // Constructors
-        TCPReceiver(char * hostname, char * hostUDPport);
+        TCPReceiver(char * hostUDPport);
 
         // Public Member Functions
         void reliableReceive(char * filename);
@@ -17,7 +17,6 @@ class TCPReceiver
     private:
         // socket communication
         int sockfd;
-        struct sockaddr saddr;
 
         // Circular buffer that contains packets
         ReceiveBuffer buffer;

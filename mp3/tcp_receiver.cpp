@@ -1,47 +1,44 @@
 
 #include "tcp_receiver.h"
 
-TCPReceiver::TCPReceiver(char * hostname, char * hostUDPport)
+TCPReceiver::TCPReceiver(char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
 	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE; // use my IP
 
-    if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		exit(1);
 	}
 
-    // loop through all the results and make a socket
-    for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                p->ai_protocol)) == -1) {
-            perror("socket");
-            continue;
-        }
+	// loop through all the results and bind to the first we can
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("listener: socket");
+			continue;
+		}
 
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
 			perror("listener: bind");
 			continue;
 		}
 
-        break;
-    }
+		break;
+	}
 
-    if (p == NULL) {
-        fprintf(stderr, "failed to bind socket\n");
-        exit(2);
-    }
+	if (p == NULL) {
+		fprintf(stderr, "listener: failed to bind socket\n");
+		exit(2);
+	}
 
-	// Need when you call sendto
-	saddr = *(p->ai_addr);
-
-    freeaddrinfo(servinfo);
-
+	freeaddrinfo(servinfo);
 }
 
 void TCPReceiver::receiveWindow()
