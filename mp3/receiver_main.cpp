@@ -7,10 +7,6 @@
 
 #include "tcp.h"
 
-
-void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
-}
-
 int main(int argc, char** argv) {
 
 	if(argc != 3){
@@ -19,9 +15,9 @@ int main(int argc, char** argv) {
 	}
 
 
-	// setup receiver connection
-	TCP connection(argv[1]);
-
-	// receive file
-	connection.receive(argv[2]);
+	// // setup receiver connection
+	// TCP connection(argv[1]);
+	//
+	// // receive file
+	// connection.receive(argv[2]);
 }

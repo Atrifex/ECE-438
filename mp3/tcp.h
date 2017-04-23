@@ -11,8 +11,8 @@ class TCP
         TCP(char * hostname, char * hostUDPport);
 
         // Public Member Functions
-        void send(char* filename, unsigned long long int bytesToTransfer);
-        void receive(char* destfilename);
+        void send(char* srcfile, unsigned long long int bytesToTransfer);
+        void receive(char* destfile);
 
     private:
         int sockfd;
