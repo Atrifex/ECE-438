@@ -13,8 +13,8 @@ int main(int argc, char** argv) {
 	}
 
 	// setup sender connection
-	TCP connection(argv[1], argv[2]);
+	TCP sender(argv[1], argv[2]);
 
 	// send file
-	connection.reliableSend(argv[3], atoll(argv[4]));
+	sender.reliableSend(argv[3], atoll(argv[4]));
 }

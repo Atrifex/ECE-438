@@ -19,8 +19,8 @@ class TCP
     private:
         // Sender Member Functions
         void sendWindow();
-        void setupConnection();
-        void tearDownConnection();
+        void senderSetupConnection();
+        void senderTearDownConnection();
 
         // Receiver Memeber Functions
         void receiveWindow();

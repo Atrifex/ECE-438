@@ -16,8 +16,8 @@ int main(int argc, char** argv) {
 
 
 	// setup receiver connection
-	TCP connection(argv[1]);
+	TCP receiver(argv[1]);
 
 	// receive file
-	connection.reliableReceive(argv[2]);
+	receiver.reliableReceive(argv[2]);
 }
