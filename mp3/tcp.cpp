@@ -32,7 +32,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(2);
 	}
 
-	freeaddrinfo(servinfo);
 
 	sendAddr  = *(p->ai_addr);
 	sendAddrLen = p->ai_addrlen;
@@ -45,12 +44,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(3);
 	}
 
-	int numbytes;
-	if ((numbytes = sendto(sockfd, "HELLO!", strlen("HELLO!"), 0,
-			 p->ai_addr, p->ai_addrlen)) == -1) {
-		perror("talker: sendto");
-		exit(1);
-	}
+	freeaddrinfo(servinfo);
 }
 
 void TCP::receiveSynAck()
@@ -73,7 +67,7 @@ void TCP::receiveSynAck()
 			setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
 			// retransmit send
 			syn.seqNum = htonl(seqNum++);
-			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sizeof(sendAddr));
+			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
 		}
 		else break;
 	}
@@ -144,10 +138,6 @@ TCP::TCP(char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
-	int numbytes;
-	struct sockaddr_storage their_addr;
-	char buf[1000];
-	socklen_t addr_len;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -181,15 +171,6 @@ TCP::TCP(char * hostUDPport)
 	}
 
 	freeaddrinfo(servinfo);
-
-	addr_len = sizeof their_addr;
-	if ((numbytes = recvfrom(sockfd, buf, 1000-1 , 0,
-		(struct sockaddr *)&their_addr, &addr_len)) == -1) {
-		perror("recvfrom");
-		exit(1);
-	}
-
-	printf("listener: packet contains \"%s\"\n", buf);
 }
 
 void TCP::receiverSetupConnection()
