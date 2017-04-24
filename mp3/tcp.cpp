@@ -13,7 +13,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 	if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
+		exit(1);
 	}
 
 	// loop through all the results and make a socket
@@ -29,7 +29,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 	if (p == NULL) {
 		fprintf(stderr, "talker: failed to bind socket\n");
-		return 2;
+		exit(2);
 	}
 
 	freeaddrinfo(servinfo);
@@ -143,9 +143,9 @@ TCP::TCP(char * hostUDPport)
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
+		exit(1);
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
@@ -166,7 +166,7 @@ TCP::TCP(char * hostUDPport)
 
 	if (p == NULL) {
 		fprintf(stderr, "listener: failed to bind socket\n");
-		return 2;
+		exit(2);
 	}
 
 	freeaddrinfo(servinfo);
