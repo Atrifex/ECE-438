@@ -59,7 +59,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 			perror("listener: socket");
 			continue;
 		}
-		
+
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
 			perror("listener: bind");
