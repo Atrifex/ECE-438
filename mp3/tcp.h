@@ -21,7 +21,7 @@ class TCP
         void sendWindow();
         void senderSetupConnection();
         void senderTearDownConnection();
-        void receiveSynAck();
+        int receiveSynAck();
 
         // Receiver Memeber Functions
         void receiveWindow();

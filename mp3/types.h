@@ -71,8 +71,8 @@ typedef pair<int,int> int_pair;
 
 
 typedef struct {
-    uint16_t length;
     uint32_t seqNum;
+    uint16_t length;
 } msg_header_t;
 
 typedef struct {
