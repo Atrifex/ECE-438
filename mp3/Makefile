@@ -1,7 +1,7 @@
 CXX = g++
 LD = g++
 CXXFLAGS = -c -g -std=c++11 -Wall -Wextra -pedantic
-LDFLAGS = -std=c++11 -pthreads
+LDFLAGS = -std=c++11 -pthread
 
 LIBFILES = types.h parameters.h
 SENDER_OBJFILES = sender_main.o tcp.o circular_buffer.o

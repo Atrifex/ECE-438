@@ -5,7 +5,7 @@
 /*************** Send Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int bytesToSend)
 {
-    sourcefile = std::ifstream(filename, std::ios::in);
+    sourcefile.open(filename, std::ios::in);
     if (!(sourcefile.is_open())) {
         std::cerr << "Unable to open source file\n";
     }
@@ -46,7 +46,7 @@ void CircularBuffer::fill()
 /*************** Receive Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename)
 {
-    destfile = std::ofstream(filename, std::ios::out);
+    destfile.open(filename, std::ios::out);
     if (!destfile.is_open()) {
         perror("file open error");
         exit(1);
