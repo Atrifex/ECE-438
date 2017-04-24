@@ -25,11 +25,11 @@ TCP::TCP(char * hostname, char * hostUDPport)
             continue;
         }
 
-        // if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-		// 	close(sockfd);
-		// 	perror("listener: bind");
-		// 	continue;
-		// }
+        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("listener: bind");
+			continue;
+		}
 
         break;
     }
@@ -69,11 +69,11 @@ void TCP::receiveSynAck()
 	while(1){
 		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&receiverAddr, &receiverAddrLen) == -1){
 			printf("No SYN_ACK yet.\n");
-			// rtt.tv_sec *= 2;
-			// rtt.tv_usec = 0;
-			// setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
-			// // retransmit send
-			// syn.seqNum = htonl(seqNum++);
+			rtt.tv_sec *= 2;
+			rtt.tv_usec = 0;
+			setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
+			// retransmit send
+			syn.seqNum = htonl(seqNum++);
 			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sizeof(sendAddr));
 		}
 		else break;
@@ -147,16 +147,15 @@ TCP::TCP(char * hostUDPport)
 	int rv;
 
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
+	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags = AI_PASSIVE; // use my IP
+	hints.ai_flags = AI_PASSIVE;
 
 	if ((rv = getaddrinfo(NULL, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		exit(1);
 	}
 
-	// loop through all the results and bind to the first we can
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
