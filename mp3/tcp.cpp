@@ -34,12 +34,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	sendAddr  = *(servinfo->ai_addr);
 	sendAddrLen = servinfo->ai_addrlen;
 
-	char s[INET6_ADDRSTRLEN];
-	printf("Sending to: %s\n",
-		inet_ntop(servinfo->ai_family,
-			get_in_addr((struct sockaddr *)&sendAddr),
-			s, sizeof s));
-
 	freeaddrinfo(servinfo);
 
 	memset(&hints, 0, sizeof hints);
@@ -90,21 +84,13 @@ void TCP::receiveSynAck()
 {
 	struct sockaddr_storage receiverAddr;
     socklen_t receiverAddrLen = sizeof(receiverAddr);
+	msg_header_t syn, syn_ack;
 
-	msg_header_t syn;
 	int seqNum = 1;
 	syn.length = htons(SYN_HEADER);
 
-	msg_header_t syn_ack;
-
-
 	while(1){
 		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&receiverAddr, &receiverAddrLen) == -1){
-			printf("No SYN_ACK yet.\n");
-			// rtt.tv_sec *= 2;
-			// rtt.tv_usec = 0;
-			// setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
-			// retransmit send
 			syn.seqNum = htonl(seqNum++);
 			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
 		}
@@ -125,8 +111,6 @@ void TCP::senderSetupConnection()
 
 	// wait for ack + syn
 	receiveSynAck();
-
-	printf("GOT THIS THIS POINT\n");
 
 	// send ack
 	ack_packet_t ack;
@@ -213,8 +197,6 @@ TCP::TCP(char * hostUDPport)
 	}
 
 	freeaddrinfo(servinfo);
-
-	printf("listener: waiting to recvfrom...\n");
 }
 
 void TCP::receiverSetupConnection()
@@ -224,16 +206,12 @@ void TCP::receiverSetupConnection()
 	socklen_t addr_len;
 	msg_header_t syn, syn_ack;
 
-	char buf[1000];
-	char s[INET6_ADDRSTRLEN];
-
 	addr_len = sizeof their_addr;
 	if ((numbytes = recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
 		perror("recvfrom");
 		exit(1);
 	}
 
-	printf("listener: got packet from %s\n", inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
 	printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
 
 	syn_ack.seqNum = ntohl(syn.seqNum);
