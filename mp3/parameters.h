@@ -8,7 +8,7 @@
 
 #define PAYLOAD (1472)
 
-#define RTT (1000000)  // 1000 ms is
+#define INIT_RTT (1000000)  // 1000 ms is
 
 #define COM_RANGE           (32768)
 #define SYN_HEADER          (COM_RANGE - 1)

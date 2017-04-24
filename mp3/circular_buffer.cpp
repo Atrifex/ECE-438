@@ -71,6 +71,8 @@ void CircularBuffer::flush()
             // book keeping
             state[j] = waiting;
             startIdx++;
+        } else{
+            return;
         }
         j = (j+1)%data.size();
     }

@@ -18,7 +18,7 @@ class CircularBuffer
 
         int startIdx;
         int seqNum;
-        vector<state_t> state;
+        vector<packet_state_t> state;
         vector<msg_packet_t> data;
         unsigned long long int bytesToTransfer;
 

@@ -21,13 +21,18 @@ class TCP
         void sendWindow();
         void senderSetupConnection();
         void senderTearDownConnection();
+        void receiveSynAck();
 
         // Receiver Memeber Functions
         void receiveWindow();
+        void receiverSetupConnection();
+        void receiverTearDownConnection();
 
         // socket communication
         int sockfd;
-        struct sockaddr saddr;
+        struct sockaddr sendAddr;   // needed for sender
+        socklen_t sendAddrLen;   // needed for sender
+        struct timeval rtt;
 
         // Circular buffer that contains packets
         CircularBuffer buffer;

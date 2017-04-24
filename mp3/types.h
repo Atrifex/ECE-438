@@ -24,6 +24,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <fstream>
+#include <ctime>
 
 using std::thread;
 using std::ref;
@@ -49,8 +50,8 @@ typedef pair<int,int> int_pair;
 
 
 typedef struct {
-    uint32_t seqNum;
     uint16_t length;
+    uint32_t seqNum;
 } msg_header_t;
 
 typedef struct {
@@ -73,6 +74,13 @@ typedef enum : uint8_t {
     /***** Receiver States *****/
     waiting,
     received
-} state_t;
+} packet_state_t;
+
+typedef enum : uint8_t {
+    closed
+} tcp_state_t;
+
+
+
 
 #endif
