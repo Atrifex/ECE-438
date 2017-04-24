@@ -10,6 +10,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE;
 
     if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -24,11 +25,11 @@ TCP::TCP(char * hostname, char * hostUDPport)
             continue;
         }
 
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-			close(sockfd);
-			perror("listener: bind");
-			continue;
-		}
+        // if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+		// 	close(sockfd);
+		// 	perror("listener: bind");
+		// 	continue;
+		// }
 
         break;
     }
@@ -73,7 +74,7 @@ void TCP::receiveSynAck()
 			// setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
 			// // retransmit send
 			// syn.seqNum = htonl(seqNum++);
-			// sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sizeof(sendAddr));
+			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sizeof(sendAddr));
 		}
 		else break;
 	}
