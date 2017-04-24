@@ -185,7 +185,7 @@ void TCP::receiverSetupConnection()
 	// receive syn
 	recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t) , 0, (struct sockaddr *)&their_addr, &addr_len);
 
-	printf("GOT THIS THIS POINT, %d\n", nths(syn.seqNum));
+	printf("GOT THIS THIS POINT, %d\n", ntohs(syn.seqNum));
 
 	// send syn + ack
 	syn_ack.seqNum = syn.seqNum;
