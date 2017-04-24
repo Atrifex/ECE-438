@@ -102,7 +102,8 @@ void TCP::senderSetupConnection()
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
-	buffer = CircularBuffer(SWS, filename, bytesToTransfer);
+    CircularBuffer temp(SWS, filename, bytesToTransfer);
+	buffer = temp;
 
 	// Set up TCP connection
 	senderSetupConnection();
@@ -203,7 +204,8 @@ void TCP::receiverSetupConnection()
 
 void TCP::reliableReceive(char * filename)
 {
-	buffer = CircularBuffer(SWS, filename);
+	CircularBuffer temp(SWS, filename);
+	buffer = temp;
 
 	// Set up TCP connection
 	receiverSetupConnection();
