@@ -44,6 +44,13 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		perror("setsockopt");
 		exit(3);
 	}
+
+	int numbytes;
+	if ((numbytes = sendto(sockfd, "HELLO!", strlen("HELLO!"), 0,
+			 p->ai_addr, p->ai_addrlen)) == -1) {
+		perror("talker: sendto");
+		exit(1);
+	}
 }
 
 void TCP::receiveSynAck()
@@ -137,6 +144,10 @@ TCP::TCP(char * hostUDPport)
 {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
+	int numbytes;
+	struct sockaddr_storage their_addr;
+	char buf[1000];
+	socklen_t addr_len;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -171,6 +182,14 @@ TCP::TCP(char * hostUDPport)
 
 	freeaddrinfo(servinfo);
 
+	addr_len = sizeof their_addr;
+	if ((numbytes = recvfrom(sockfd, buf, 1000-1 , 0,
+		(struct sockaddr *)&their_addr, &addr_len)) == -1) {
+		perror("recvfrom");
+		exit(1);
+	}
+
+	printf("listener: packet contains \"%s\"\n", buf);
 }
 
 void TCP::receiverSetupConnection()
