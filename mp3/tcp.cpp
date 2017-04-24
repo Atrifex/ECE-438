@@ -10,38 +10,32 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags = AI_PASSIVE;
 
-    if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(hostname, hostUDPport, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		exit(1);
+		return 1;
 	}
 
-
-    // loop through all the results and make a socket
-    for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            perror("socket");
-            continue;
-        }
-
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-			close(sockfd);
-			perror("listener: bind");
+	// loop through all the results and make a socket
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("talker: socket");
 			continue;
 		}
 
-        break;
-    }
+		break;
+	}
 
-    if (p == NULL) {
-        fprintf(stderr, "failed to bind socket\n");
-        exit(2);
-    }
+	if (p == NULL) {
+		fprintf(stderr, "talker: failed to bind socket\n");
+		return 2;
+	}
 
-	// Need when you call sendto
-	sendAddr = *(p->ai_addr);
-	sendAddrLen = (p->ai_addrlen);
+	freeaddrinfo(servinfo);
+
+	sendAddr  = *(p->ai_addr);
+	sendAddrLen = p->ai_addrlen;
 
 	// Initial time out estimation
 	rtt.tv_sec = 1;
@@ -50,8 +44,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		perror("setsockopt");
 		exit(3);
 	}
-
-    freeaddrinfo(servinfo);
 }
 
 void TCP::receiveSynAck()
@@ -151,9 +143,9 @@ TCP::TCP(char * hostUDPport)
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	if ((rv = getaddrinfo(NULL, hostUDPport, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		exit(1);
+		return 1;
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
@@ -174,10 +166,11 @@ TCP::TCP(char * hostUDPport)
 
 	if (p == NULL) {
 		fprintf(stderr, "listener: failed to bind socket\n");
-		exit(2);
+		return 2;
 	}
 
 	freeaddrinfo(servinfo);
+
 }
 
 void TCP::receiverSetupConnection()
