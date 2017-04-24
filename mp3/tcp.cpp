@@ -1,6 +1,16 @@
 
 #include "tcp.h"
 
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+	if (sa->sa_family == AF_INET) {
+		return &(((struct sockaddr_in*)sa)->sin_addr);
+	}
+
+	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 /*************** Sender Functions ***************/
 TCP::TCP(char * hostname, char * hostUDPport)
 {
@@ -16,11 +26,43 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(1);
 	}
 
-	// loop through all the results and make a socket
+	if (servinfo == NULL) {
+		fprintf(stderr, "talker: failed to resolve addr\n");
+		exit(2);
+	}
+
+	sendAddr  = *(servinfo->ai_addr);
+	sendAddrLen = servinfo->ai_addrlen;
+
+	char s[INET6_ADDRSTRLEN];
+	printf("Sending to: %s\n",
+		inet_ntop(servinfo->ai_family,
+			get_in_addr((struct sockaddr *)&sendAddr),
+			s, sizeof s));
+
+	freeaddrinfo(servinfo);
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	if ((rv = getaddrinfo(NULL, hostUDPport, &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		exit(1);
+	}
+
+	// loop through all the results and bind to the first we can
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
-			perror("talker: socket");
+			perror("listener: socket");
+			continue;
+		}
+		
+		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("listener: bind");
 			continue;
 		}
 
@@ -28,13 +70,11 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	}
 
 	if (p == NULL) {
-		fprintf(stderr, "talker: failed to bind socket\n");
+		fprintf(stderr, "listener: failed to bind socket\n");
 		exit(2);
 	}
 
-
-	sendAddr  = *(p->ai_addr);
-	sendAddrLen = p->ai_addrlen;
+	freeaddrinfo(servinfo);
 
 	// Initial time out estimation
 	rtt.tv_sec = 1;
@@ -44,7 +84,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(3);
 	}
 
-	freeaddrinfo(servinfo);
 }
 
 void TCP::receiveSynAck()
@@ -62,9 +101,9 @@ void TCP::receiveSynAck()
 	while(1){
 		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&receiverAddr, &receiverAddrLen) == -1){
 			printf("No SYN_ACK yet.\n");
-			rtt.tv_sec *= 2;
-			rtt.tv_usec = 0;
-			setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
+			// rtt.tv_sec *= 2;
+			// rtt.tv_usec = 0;
+			// setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&rtt,sizeof(rtt));
 			// retransmit send
 			syn.seqNum = htonl(seqNum++);
 			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
