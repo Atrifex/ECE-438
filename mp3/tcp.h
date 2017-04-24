@@ -35,7 +35,7 @@ class TCP
         struct timeval rtt;
 
         // Circular buffer that contains packets
-        CircularBuffer buffer;
+        CircularBuffer * buffer;
 
         // Book keeping
 };

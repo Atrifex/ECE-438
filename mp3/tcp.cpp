@@ -102,15 +102,14 @@ void TCP::senderSetupConnection()
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
-    CircularBuffer temp(SWS, filename, bytesToTransfer);
-	buffer = temp;
+    buffer = new CircularBuffer(SWS, filename, bytesToTransfer);
 
 	// Set up TCP connection
 	senderSetupConnection();
 
 	while(1){
 		// fill
-		buffer.fill();
+		buffer->fill();
 
 		// send
 		sendWindow();
@@ -131,12 +130,12 @@ void TCP::senderTearDownConnection()
 
 void TCP::sendWindow()
 {
-	size_t j = buffer.startIdx;
-	for(size_t i = 0; i < buffer.data.size(); i++) {
-		if(buffer.state[j] == filled){
-			sendto(sockfd, (char *)&(buffer.data[j]), sizeof(msg_packet_t), 0, &sendAddr, sizeof(sendAddr));
-			buffer.state[j] = sent;
-			j = (j + 1) % buffer.data.size();
+	size_t j = buffer->startIdx;
+	for(size_t i = 0; i < buffer->data.size(); i++) {
+		if(buffer->state[j] == filled){
+			sendto(sockfd, (char *)&(buffer->data[j]), sizeof(msg_packet_t), 0, &sendAddr, sizeof(sendAddr));
+			buffer->state[j] = sent;
+			j = (j + 1) % buffer->data.size();
 		}
 	}
 }
@@ -204,8 +203,7 @@ void TCP::receiverSetupConnection()
 
 void TCP::reliableReceive(char * filename)
 {
-	CircularBuffer temp(SWS, filename);
-	buffer = temp;
+	buffer = new CircularBuffer(SWS, filename);
 
 	// Set up TCP connection
 	receiverSetupConnection();
@@ -217,7 +215,7 @@ void TCP::reliableReceive(char * filename)
 		// send acks
 
 		// flush
-		buffer.flush();
+		buffer->flush();
 
 	}
 
