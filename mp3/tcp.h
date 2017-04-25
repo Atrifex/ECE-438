@@ -24,7 +24,7 @@ class TCP
         int receiveSynAck();
 
         // Receiver Memeber Functions
-        void receiveWindow();
+        bool receivePacket();
         void receiverSetupConnection();
         void receiverTearDownConnection();
 

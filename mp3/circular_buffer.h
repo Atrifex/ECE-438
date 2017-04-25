@@ -20,7 +20,7 @@ class CircularBuffer
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
 
         int sIdx;
-        uint seqNum;
+        uint32_t seqNum;
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
         vector<uint32_t> length;

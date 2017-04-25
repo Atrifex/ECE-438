@@ -264,15 +264,9 @@ void TCP::reliableReceive(char * filename)
 	receiverSetupConnection();
 
 	while(1){
-		printf("GOT HERE\n\n\n");
-		// receive
-		receiveWindow();
+		if(receivePacket() == false) break;
 
-		// send acks
-
-		// flush
 		buffer->flush();
-
 	}
 
 	// tear down TCP connection
@@ -281,7 +275,7 @@ void TCP::reliableReceive(char * filename)
 
 
 
-void TCP::receiveWindow()
+bool TCP::receivePacket()
 {
 	int numbytes;
 	struct sockaddr_storage their_addr;
@@ -294,5 +288,9 @@ void TCP::receiveWindow()
 		exit(1);
 	}
 
+	if(packet.header.type == FIN_HEADER) return false;
+
 	buffer->storeReceivedPacket(packet, numbytes);
+
+	return true;
 }
