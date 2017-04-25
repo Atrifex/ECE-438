@@ -41,6 +41,11 @@ bool CircularBuffer::fill()
             // read data into buffer
             sourcefile.read(data[j].msg, packetLength - sizeof(msg_header_t));
 
+#ifdef DEBUG
+            ((char *)&data[j])[packetLength] = '\0';
+            printf("Packet loaded, size %d\n %s\n", packetLength - sizeof(msg_header_t),  (char *)&data[j].msg);
+#endif
+
             // book keeping
             state[j] = filled;
             bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;

@@ -99,9 +99,9 @@ int TCP::receiveSynAck()
 	}
 	// TODO: RTT
 
-	#ifdef DEBUG
-		printf("SYN ACK received, with seqNum: %d\n", ntohl(syn_ack.seqNum));
-	#endif
+#ifdef DEBUG
+	printf("SYN ACK received, with seqNum: %d\n", ntohl(syn_ack.seqNum));
+#endif
 
 	return syn_ack.seqNum;
 }
@@ -221,9 +221,9 @@ void TCP::receiverSetupConnection()
 		exit(1);
 	}
 
-	#ifdef DEBUG
-		printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
-	#endif
+#ifdef DEBUG
+	printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
+#endif
 
 	/********** Send SYN + ACK **********/
 	syn_ack.type = SYN_ACK_HEADER;
@@ -243,13 +243,14 @@ void TCP::receiverSetupConnection()
 		// write message into buffer if ACK lost and message seen first
 		buffer->storeReceivedPacket(packet, numbytes);
 
-		#ifdef DEBUG
-				printf("Packet received %s\n", (char *)&packet.msg);
-		#endif
+#ifdef DEBUG
+		((char *)&packet)[numbytes] = '\0';
+		printf("Packet received %s\n", (char *)&packet.msg);
+#endif
 	}else{
-		#ifdef DEBUG
-				printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(packet.header.seqNum));
-		#endif
+#ifdef DEBUG
+		printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(packet.header.seqNum));
+#endif
 	}
 }
 
