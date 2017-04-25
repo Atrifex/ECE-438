@@ -86,6 +86,7 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 void CircularBuffer::flush()
 {
     for(size_t i = 0; i < data.size(); i++) {
+        pktLocks[sIdx].lock();
         if(state[sIdx] == received){
 
 #ifdef DEBUG
@@ -98,12 +99,20 @@ void CircularBuffer::flush()
 
             // book keeping
             state[sIdx] = waiting;
+            seqNumLock.lock();
             seqNum++;
+            seqNumLock.unlock();
             sIdx = (sIdx+1)%data.size();
         } else{
+            pktLocks[sIdx].unlock();
             return;
         }
+        pktLocks[sIdx].unlock();
     }
+}
+
+void flushBuffer(CircularBuffer & buffer) {
+    buffer.flush();
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -111,10 +120,15 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     packet.header.seqNum = ntohl(packet.header.seqNum);
 
     // drop packet if the seqNum is smaller than expected.
-    if(packet.header.seqNum < seqNum) return;
+    seqNumLock.lock();
+    if(packet.header.seqNum < seqNum){
+        seqNumLock.unlock();
+        return;
+    }
+    seqNumLock.unlock();
 
     size_t bufIdx = packet.header.seqNum % data.size();
-    // pktLocks[]
+    pktLocks[bufIdx].lock();
     if(state[bufIdx] == waiting){
         state[bufIdx] = received;
         data[bufIdx] = packet;
@@ -125,6 +139,8 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 #endif
 
     }
+    pktLocks[bufIdx].unlock();
 
-    // TODO: launch thread to flush file.
+    thread flusher(flushBuffer, ref(*this));
+    flusher.detach();
 }

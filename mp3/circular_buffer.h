@@ -17,17 +17,20 @@ class CircularBuffer
         bool fill();
 
         // receiver member function
-        void flush();
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
+        void flush();
 
         int sIdx;
+
+        mutex seqNumLock;
         uint32_t seqNum;
+
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
         mutex pktLocks[MAX_WINDOW_SIZE];
-        unsigned long long int bytesToTransfer;
 
+        unsigned long long int bytesToTransfer;
     private:
         ifstream sourcefile;
         ofstream destfile;

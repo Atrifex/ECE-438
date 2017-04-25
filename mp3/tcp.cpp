@@ -144,8 +144,6 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 		// send
 		sendWindow();
 
-		break;
-
 		// wait for ack
 		// TODO: increment sIdx
 	}
