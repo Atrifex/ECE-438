@@ -131,6 +131,10 @@ void TCP::senderSetupConnection()
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
 }
 
+void ackProcessor(TCP & connection) {
+    connection.processAcks();
+}
+
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
     buffer = new CircularBuffer(SWS, filename, bytesToTransfer);
@@ -143,6 +147,8 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 
 	// send data
 	buffer->fill();
+	thread ackHandler(ackProcessor, ref(*this));
+	ackHandler.detach();
 	while(state == ESTABLISHED) sendWindow();
 
 	// tear down TCP connection
@@ -154,6 +160,12 @@ void TCP::senderTearDownConnection()
 {
 
 }
+
+void TCP::processAcks()
+{
+	printf("Ack Handler started up\n");
+}
+
 
 void TCP::sendWindow()
 {

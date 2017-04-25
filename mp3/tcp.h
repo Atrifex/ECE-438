@@ -14,17 +14,20 @@ class TCP
         TCP(char * hostUDPport);
         ~TCP();
 
-        // Public Member Functions
+        // Public Sender Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
+        void processAcks();
+
+        // Public Receiver Member Functions
         void reliableReceive(char * filename);
     private:
-        // Sender Member Functions
+        // Private Sender Member Functions
         void sendWindow();
         void senderSetupConnection();
         void senderTearDownConnection();
         int receiveSynAck();
 
-        // Receiver Memeber Functions
+        // Private Receiver Memeber Functions
         bool receivePacket();
         void receiverSetupConnection();
         void receiverTearDownConnection();

@@ -136,7 +136,7 @@ void CircularBuffer::flush()
     }
 }
 
-void flushBuffer(CircularBuffer & buffer) {
+void bufferFlusher(CircularBuffer & buffer) {
     buffer.flush();
 }
 
@@ -167,6 +167,6 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     }
     pktLocks[bufIdx].unlock();
 
-    thread flusher(flushBuffer, ref(*this));
+    thread flusher(bufferFlusher, ref(*this));
     flusher.detach();
 }
