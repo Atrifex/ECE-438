@@ -36,7 +36,7 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     int fileLength = sourcefile.tellg();
     sourcefile.seekg (0, sourcefile.beg);
 
-    state.resize(size, available);
+    state.resize(size, AVAILABLE);
     data.resize(size);
     length.resize(size);
 
@@ -52,7 +52,7 @@ bool CircularBuffer::fill()
         if(bytesToTransfer <= 0)
             return false;
 
-        if(state[j] == available){
+        if(state[j] == AVAILABLE){
             int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
 #ifdef DEBUG
@@ -67,7 +67,7 @@ bool CircularBuffer::fill()
             sourcefile.read(data[j].msg, packetLength - sizeof(msg_header_t));
 
             // book keeping
-            state[j] = filled;
+            state[j] = FILLED;
             bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;
         }
         j = (j+1)%data.size();
@@ -87,7 +87,7 @@ CircularBuffer::CircularBuffer(int size, char * filename)
         exit(1);
     }
 
-    state.resize(size, waiting);
+    state.resize(size, WAITING);
     data.resize(size);
     length.resize(size);
 
@@ -109,7 +109,7 @@ void CircularBuffer::flush()
 {
     for(size_t i = 0; i < data.size(); i++) {
         pktLocks[sIdx].lock();
-        if(state[sIdx] == received){
+        if(state[sIdx] == RECEIVED){
 
             thread acker(sendAck, data[sIdx].header.seqNum);
             acker.detach();
@@ -123,7 +123,7 @@ void CircularBuffer::flush()
             destfile.flush();
 
             // book keeping
-            state[sIdx] = waiting;
+            state[sIdx] = WAITING;
             seqNumLock.lock();
             seqNum++;
             seqNumLock.unlock();
@@ -154,14 +154,14 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 
     size_t bufIdx = packet.header.seqNum % data.size();
     pktLocks[bufIdx].lock();
-    if(state[bufIdx] == waiting){
-        state[bufIdx] = received;
+    if(state[bufIdx] == WAITING){
+        state[bufIdx] = RECEIVED;
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
 
 #ifdef DEBUG
         printf("\nReceived seqNum: %lu\n", packet.header.seqNum);
-        printf("Index Store: %lu, Received length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
+        printf("Index Store: %lu, RECEIVED length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
 #endif
 
     }

@@ -39,6 +39,7 @@ class TCP
         CircularBuffer * buffer;
 
         // Book keeping
+        tcp_state_t state;
 };
 
 

@@ -91,18 +91,20 @@ typedef struct {
 
 typedef enum : uint8_t {
     /***** Sender States *****/
-    available,
-    filled,
-    sent,
-    acked,
+    AVAILABLE, FILLED, SENT, ACKED,
 
     /***** Receiver States *****/
-    waiting,
-    received
+    WAITING, RECEIVED
 } packet_state_t;
 
 typedef enum : uint8_t {
-    closed
+    CLOSED, LISTEN,
+    SYN_RECVD,      // receiver side
+    SYN_SENT,       // sender side
+    ESTABLISHED,    // both
+
+    // Might need fin_wait
+    CLOSING, TIME_WAIT
 } tcp_state_t;
 
 

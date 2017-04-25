@@ -83,6 +83,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(3);
 	}
 
+	state = CLOSED;
 }
 
 int TCP::receiveSynAck()
@@ -134,25 +135,15 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
     buffer = new CircularBuffer(SWS, filename, bytesToTransfer);
 
+	state = LISTEN;
+
 	// Set up TCP connection
 	senderSetupConnection();
+	state = ESTABLISHED;
 
-	while(1){
-		// fill
-		buffer->fill();
-
-		// send
-		sendWindow();
-
-		ack_packet_t ack;
-		struct sockaddr_storage theirAddr;
-		socklen_t theirAddrLen = sizeof(theirAddr);
-		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-			buffer->state[(ntohl(ack.seqNum)) % buffer->state.size()] = available;
-		}
-		// wait for ack
-		// TODO: increment sIdx
-	}
+	// send data
+	buffer->fill();
+	while(state == ESTABLISHED) sendWindow();
 
 	// tear down TCP connection
 	senderTearDownConnection();
@@ -168,9 +159,9 @@ void TCP::sendWindow()
 {
 	size_t j = buffer->sIdx;
 	for(size_t i = 0; i < buffer->data.size(); i++) {
-		if(buffer->state[j] == filled){
+		if(buffer->state[j] == FILLED){
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
-			buffer->state[j] = sent;
+			buffer->state[j] = SENT;
 			j = (j + 1) % buffer->data.size();
 		}
 	}
@@ -215,6 +206,8 @@ TCP::TCP(char * hostUDPport)
 	}
 
 	freeaddrinfo(servinfo);
+
+	state = CLOSED;
 }
 
 void TCP::receiverSetupConnection()
@@ -271,7 +264,10 @@ void TCP::receiverSetupConnection()
 
 void TCP::reliableReceive(char * filename)
 {
+
 	buffer = new CircularBuffer(SWS, filename);
+
+	state = LISTEN;
 
 	// Set up TCP connection
 	receiverSetupConnection();
