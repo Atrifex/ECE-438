@@ -12,7 +12,7 @@
 
 #define COM_RANGE           (32768)
 #define SYN_HEADER          (COM_RANGE - 1)
-#define SYN_ACK_HEADER      (COM_RANGE - 2)
-#define FIN_HEADER          (COM_RANGE - 3)
-
+#define ACK_HEADER          (COM_RANGE - 2)
+#define SYN_ACK_HEADER      (COM_RANGE - 3)
+#define FIN_HEADER          (COM_RANGE - 4)
 #endif

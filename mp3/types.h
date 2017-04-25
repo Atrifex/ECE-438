@@ -70,18 +70,22 @@ using std::min;
 typedef pair<int,int> int_pair;
 
 
+#pragma pack(1)
 typedef struct {
     uint32_t seqNum;
     uint16_t length;
 } msg_header_t;
 
+#pragma pack(1)
 typedef struct {
     msg_header_t header;
     char msg[PAYLOAD - sizeof(msg_header_t)];
 } msg_packet_t;
 
+#pragma pack(1)
 typedef struct {
     uint32_t seqNum;
+    uint16_t length;
 } ack_packet_t;
 
 

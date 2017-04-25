@@ -84,7 +84,25 @@ int main(void)
 
 	while(1){
 		addr_len = sizeof their_addr;
-		numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&their_addr, &addr_len);
+		numbytes = recvfrom(sockfd, buf, 5 , 0, (struct sockaddr *)&their_addr, &addr_len);
+		if(numbytes == -1)
+			printf("Nothing received.\n");
+		else
+			break;
+	}
+	printf("listener: got packet from %s\n",
+		inet_ntop(their_addr.ss_family,
+			get_in_addr((struct sockaddr *)&their_addr),
+			s, sizeof s));
+	printf("listener: packet is %d bytes long\n", numbytes);
+	buf[numbytes] = '\0';
+	printf("listener: packet contains \"%s\"\n", buf);
+
+	while(1){
+		numbytes = recvfrom(sockfd, buf+5, 5 , 0, (struct sockaddr *)&their_addr, &addr_len);
+		break;
+		addr_len = sizeof their_addr;
+		numbytes = recvfrom(sockfd, buf, 5 , 0, (struct sockaddr *)&their_addr, &addr_len);
 		if(numbytes == -1)
 			printf("Nothing received.\n");
 		else
