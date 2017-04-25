@@ -12,9 +12,12 @@ class CircularBuffer
         CircularBuffer(int size, char * filename, unsigned long long int bytesToSend);
         CircularBuffer(int size, char * filename);
 
-        // send and receive buffer member function
+        // sender member function
         bool fill();
+
+        // receiver member function
         void flush();
+        void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
 
         int startIdx;
         int seqNum;

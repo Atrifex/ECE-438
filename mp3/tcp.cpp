@@ -99,9 +99,9 @@ int TCP::receiveSynAck()
 	}
 	// TODO: RTT
 
-#ifdef DEBUG
-	printf("SYN ACK received, with seqNum: %d\n", ntohl(syn_ack.seqNum));
-#endif
+	#ifdef DEBUG
+		printf("SYN ACK received, with seqNum: %d\n", ntohl(syn_ack.seqNum));
+	#endif
 
 	return syn_ack.seqNum;
 }
@@ -122,7 +122,7 @@ void TCP::senderSetupConnection()
 	ack.seqNum = receiveSynAck();
 
 	// send ack
-	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &sendAddr, sendAddrLen);
+	// sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &sendAddr, sendAddrLen);
 }
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
@@ -132,16 +132,16 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	// Set up TCP connection
 	senderSetupConnection();
 
-	// while(1){
-	// 	// fill
-	// 	buffer->fill();
-	//
-	// 	// send
-	// 	sendWindow();
-	//
-	// 	// wait for ack
-	// 	// TODO: increment startIdx
-	// }
+	while(1){
+		// fill
+		buffer->fill();
+
+		// send
+		sendWindow();
+
+		// wait for ack
+		// TODO: increment startIdx
+	}
 
 	// tear down TCP connection
 	senderTearDownConnection();
@@ -212,7 +212,7 @@ void TCP::receiverSetupConnection()
 	struct sockaddr_storage their_addr;
 	socklen_t addr_len;
 	msg_header_t syn, syn_ack;
-	msg_packet_t msg;
+	msg_packet_t packet;
 	addr_len = sizeof(their_addr);
 
 	/********** receive SYN **********/
@@ -221,9 +221,9 @@ void TCP::receiverSetupConnection()
 		exit(1);
 	}
 
-#ifdef DEBUG
-	printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
-#endif
+	#ifdef DEBUG
+		printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
+	#endif
 
 	/********** Send SYN + ACK **********/
 	syn_ack.type = SYN_ACK_HEADER;
@@ -234,23 +234,22 @@ void TCP::receiverSetupConnection()
 	}
 
 	/********** receive ACK or MSG and treat it accordingly **********/
-	if ((numbytes = recvfrom(sockfd, (char *)&msg, sizeof(msg_packet_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+	if ((numbytes = recvfrom(sockfd, (char *)&packet, sizeof(msg_packet_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
 		perror("recvfrom");
 		exit(1);
 	}
 
-	if(numbytes == sizeof(msg_packet_t)){
+	if((uint)numbytes > sizeof(msg_header_t)){
 		// write message into buffer if ACK lost and message seen first
+		buffer->storeReceivedPacket(packet, numbytes);
 
-#ifdef DEBUG
-		printf("Packet received %s\n", (char *)&msg);
-#endif
-
-		// conditional wake up for writing packet to output file.
+		#ifdef DEBUG
+				printf("Packet received %s\n", (char *)&packet.msg);
+		#endif
 	}else{
-#ifdef DEBUG
-		printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(msg.header.seqNum));
-#endif
+		#ifdef DEBUG
+				printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(packet.header.seqNum));
+		#endif
 	}
 }
 

@@ -11,15 +11,16 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     }
 
     sourcefile.seekg (0, sourcefile.end);
-    int length = sourcefile.tellg();
+    int fileLength = sourcefile.tellg();
     sourcefile.seekg (0, sourcefile.beg);
 
     state.resize(size, available);
     data.resize(size);
+    length.resize(size);
 
     seqNum = 0;
     startIdx = 0;
-    bytesToTransfer = min((unsigned long long)length, bytesToSend);
+    bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
 }
 
 bool CircularBuffer::fill()
@@ -47,6 +48,8 @@ bool CircularBuffer::fill()
         j = (j+1)%data.size();
     }
 
+    // launch thread to fill large buffer that isnt the cirular buffer
+
     return true;
 }
 
@@ -61,6 +64,7 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 
     state.resize(size, waiting);
     data.resize(size);
+    length.resize(size);
 
     seqNum = 0;
     startIdx = 0;
@@ -72,7 +76,7 @@ void CircularBuffer::flush()
     for(size_t i = 0; i < data.size(); i++) {
         if(state[j] == received){
             // write to file
-            destfile.write(data[j].msg, 8008);
+            destfile.write(data[j].msg, (length[j] - sizeof(msg_header_t)));
 
             // book keeping
             state[j] = waiting;
@@ -82,4 +86,16 @@ void CircularBuffer::flush()
         }
         j = (j+1)%data.size();
     }
+}
+
+void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
+{
+    packet.header.seqNum = ntohl(packet.header.seqNum);
+    if(state[(packet.header.seqNum % data.size())] == waiting){
+        state[(packet.header.seqNum % data.size())] = received;
+        data[(packet.header.seqNum % data.size())] = packet;
+        length[(packet.header.seqNum % data.size())] = packetLength;
+    }
+
+    // TODO: conditional wake up for writing packet to output file.
 }
