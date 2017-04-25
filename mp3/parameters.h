@@ -10,9 +10,11 @@
 
 #define INIT_RTT (1000000)  // 1000 ms is
 
-#define COM_RANGE           (32768)
-#define SYN_HEADER          (COM_RANGE - 1)
-#define ACK_HEADER          (COM_RANGE - 2)
-#define SYN_ACK_HEADER      (COM_RANGE - 3)
-#define FIN_HEADER          (COM_RANGE - 4)
+#define ACK_HEADER          (0x01)
+#define SYN_HEADER          (0x02)
+#define SYN_ACK_HEADER      (0x03)
+#define FIN_HEADER          (0x04)
+#define FIN_ACK_HEADER      (0x05)
+#define DATA                (0x06)
+
 #endif

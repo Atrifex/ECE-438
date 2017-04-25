@@ -13,13 +13,14 @@ class CircularBuffer
         CircularBuffer(int size, char * filename);
 
         // send and receive buffer member function
-        void fill();
+        bool fill();
         void flush();
 
         int startIdx;
         int seqNum;
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
+        vector<uint32_t> length;
         unsigned long long int bytesToTransfer;
 
     private:

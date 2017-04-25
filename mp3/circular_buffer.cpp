@@ -22,25 +22,32 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = min((unsigned long long)length, bytesToSend);
 }
 
-void CircularBuffer::fill()
+bool CircularBuffer::fill()
 {
     size_t j = startIdx;
     for(size_t i = 0; i < data.size(); i++) {
-        if(state[j] == available && bytesToTransfer > 0){
-            int length = min((unsigned long long)PAYLOAD, bytesToTransfer);
+        if(bytesToTransfer <= 0)
+            return false;
+
+        if(state[j] == available){
+            int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
             // initialize header
+            data[j].header.type = DATA;
             data[j].header.seqNum = htonl(seqNum++);
-            data[j].header.length = htons(length);
+            length[j] = packetLength;
 
-            sourcefile.read(data[j].msg, length);
+            // read data into buffer
+            sourcefile.read(data[j].msg, packetLength - sizeof(msg_header_t));
 
             // book keeping
             state[j] = filled;
-            bytesToTransfer -= length;
+            bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;
         }
         j = (j+1)%data.size();
     }
+
+    return true;
 }
 
 /*************** Receive Buffer ***************/
@@ -65,8 +72,7 @@ void CircularBuffer::flush()
     for(size_t i = 0; i < data.size(); i++) {
         if(state[j] == received){
             // write to file
-            int length = ntohs(data[j].header.length);
-            destfile.write(data[j].msg, length);
+            destfile.write(data[j].msg, 8008);
 
             // book keeping
             state[j] = waiting;

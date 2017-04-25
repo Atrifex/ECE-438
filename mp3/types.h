@@ -72,8 +72,8 @@ typedef pair<int,int> int_pair;
 
 #pragma pack(1)
 typedef struct {
+    uint8_t type;
     uint32_t seqNum;
-    uint16_t length;
 } msg_header_t;
 
 #pragma pack(1)
@@ -84,8 +84,8 @@ typedef struct {
 
 #pragma pack(1)
 typedef struct {
+    uint8_t type;
     uint32_t seqNum;
-    uint16_t length;
 } ack_packet_t;
 
 

@@ -86,8 +86,8 @@ int TCP::receiveSynAck()
     socklen_t receiverAddrLen = sizeof(receiverAddr);
 	msg_header_t syn, syn_ack;
 
+	syn.type = SYN_HEADER;
 	int seqNum = 1;
-	syn.length = htons(SYN_HEADER);
 
 	// TODO: RTT
 	while(1){
@@ -110,16 +110,16 @@ void TCP::senderSetupConnection()
 {
 	// construct buffer
 	msg_header_t syn;
+	syn.type = SYN_HEADER;
 	syn.seqNum = htonl(0);
-	syn.length = htons(SYN_HEADER);
 
 	// send
 	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
 
 	// wait for ack + syn
 	ack_packet_t ack;
+	ack.type = ACK_HEADER;
 	ack.seqNum = receiveSynAck();
-	ack.length = htons(ACK_HEADER);
 
 	// send ack
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &sendAddr, sendAddrLen);
@@ -132,16 +132,16 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	// Set up TCP connection
 	senderSetupConnection();
 
-	while(1){
-		// fill
-		buffer->fill();
-
-		// send
-		sendWindow();
-
-		// wait for ack
-		// TODO: increment startIdx
-	}
+	// while(1){
+	// 	// fill
+	// 	buffer->fill();
+	//
+	// 	// send
+	// 	sendWindow();
+	//
+	// 	// wait for ack
+	// 	// TODO: increment startIdx
+	// }
 
 	// tear down TCP connection
 	senderTearDownConnection();
@@ -158,7 +158,7 @@ void TCP::sendWindow()
 	size_t j = buffer->startIdx;
 	for(size_t i = 0; i < buffer->data.size(); i++) {
 		if(buffer->state[j] == filled){
-			sendto(sockfd, (char *)&(buffer->data[j]), sizeof(msg_packet_t), 0, &sendAddr, sizeof(sendAddr));
+			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &sendAddr, sizeof(sendAddr));
 			buffer->state[j] = sent;
 			j = (j + 1) % buffer->data.size();
 		}
@@ -211,7 +211,8 @@ void TCP::receiverSetupConnection()
 	int numbytes;
 	struct sockaddr_storage their_addr;
 	socklen_t addr_len;
-	msg_header_t syn, syn_ack, msg_or_ack;
+	msg_header_t syn, syn_ack;
+	msg_packet_t msg;
 	addr_len = sizeof(their_addr);
 
 	/********** receive SYN **********/
@@ -225,30 +226,30 @@ void TCP::receiverSetupConnection()
 #endif
 
 	/********** Send SYN + ACK **********/
+	syn_ack.type = SYN_ACK_HEADER;
 	syn_ack.seqNum = syn.seqNum;
-	syn_ack.length = htons(SYN_ACK_HEADER);
 	if ((numbytes = sendto(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) {
 		perror("talker: sendto");
 		exit(1);
 	}
 
 	/********** receive ACK or MSG and treat it accordingly **********/
-	if ((numbytes = recvfrom(sockfd, (char *)&msg_or_ack, sizeof(msg_header_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+	if ((numbytes = recvfrom(sockfd, (char *)&msg, sizeof(msg_packet_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
 		perror("recvfrom");
 		exit(1);
 	}
 
-	if(msg_or_ack.length != ){
+	if(numbytes == sizeof(msg_packet_t)){
 		// write message into buffer if ACK lost and message seen first
 
 #ifdef DEBUG
-		printf("Packet received %s\n", (char *)&buffer->state[buffer->startIdx]);
+		printf("Packet received %s\n", (char *)&msg);
 #endif
 
 		// conditional wake up for writing packet to output file.
 	}else{
 #ifdef DEBUG
-		printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(msg_or_ack.seqNum));
+		printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(msg.header.seqNum));
 #endif
 	}
 }
@@ -260,16 +261,16 @@ void TCP::reliableReceive(char * filename)
 	// Set up TCP connection
 	receiverSetupConnection();
 
-	while(1){
-		// receive
-		receiveWindow();
-
-		// send acks
-
-		// flush
-		buffer->flush();
-
-	}
+	// while(1){
+	// 	// receive
+	// 	receiveWindow();
+	//
+	// 	// send acks
+	//
+	// 	// flush
+	// 	buffer->flush();
+	//
+	// }
 
 	// tear down TCP connection
 
