@@ -11,6 +11,7 @@ class CircularBuffer
         CircularBuffer(){}
         CircularBuffer(int size, char * filename, unsigned long long int bytesToSend);
         CircularBuffer(int size, char * filename);
+        ~CircularBuffer();
 
         // sender member function
         bool fill();
@@ -24,6 +25,7 @@ class CircularBuffer
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
+        mutex pktLocks[MAX_WINDOW_SIZE];
         unsigned long long int bytesToTransfer;
 
     private:

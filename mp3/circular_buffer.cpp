@@ -1,6 +1,15 @@
 
 #include "circular_buffer.h"
 
+CircularBuffer::~CircularBuffer() {
+    if (sourcefile.is_open()) {
+        sourcefile.close();
+    }
+    if (destfile.is_open()) {
+        destfile.close();
+    }
+}
+
 
 /*************** Send Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int bytesToSend)
@@ -8,6 +17,7 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     sourcefile.open(filename, std::ios::in);
     if (!(sourcefile.is_open())) {
         std::cerr << "Unable to open source file\n";
+        exit(1);
     }
 
     sourcefile.seekg (0, sourcefile.end);
@@ -103,13 +113,17 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     // drop packet if the seqNum is smaller than expected.
     if(packet.header.seqNum < seqNum) return;
 
-    if(state[(packet.header.seqNum % data.size())] == waiting){
-        state[(packet.header.seqNum % data.size())] = received;
-        data[(packet.header.seqNum % data.size())] = packet;
-        length[(packet.header.seqNum % data.size())] = packetLength - sizeof(msg_header_t);
+    size_t bufIdx = packet.header.seqNum % data.size();
+    // pktLocks[]
+    if(state[bufIdx] == waiting){
+        state[bufIdx] = received;
+        data[bufIdx] = packet;
+        length[bufIdx] = packetLength - sizeof(msg_header_t);
+
 #ifdef DEBUG
-        printf("Index Store: %lu, Received length: %lu\n", (packet.header.seqNum % data.size()), packetLength - sizeof(msg_header_t));
+        printf("Index Store: %lu, Received length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
 #endif
+
     }
 
     // TODO: launch thread to flush file.

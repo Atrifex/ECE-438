@@ -11,6 +11,11 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+TCP::~TCP(){
+	delete buffer;
+	close(sockfd);
+}
+
 /*************** Sender Functions ***************/
 TCP::TCP(char * hostname, char * hostUDPport)
 {
@@ -265,10 +270,7 @@ void TCP::reliableReceive(char * filename)
 
 	while(1){
 		if(receivePacket() == false) break;
-
-		buffer->flush();
 	}
-
 	// tear down TCP connection
 
 }

@@ -12,6 +12,7 @@ class TCP
         TCP(char * hostname, char * hostUDPport);
         // Receiver Constructor
         TCP(char * hostUDPport);
+        ~TCP();
 
         // Public Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
