@@ -86,32 +86,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	state = CLOSED;
 }
 
-int TCP::receiveSynAck()
-{
-	struct sockaddr_storage theirAddr;
-    socklen_t theirAddrLen = sizeof(theirAddr);
-	msg_header_t syn, syn_ack;
-
-	syn.type = SYN_HEADER;
-	int seqNum = 1;
-
-	// TODO: RTT
-	while(1){
-		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-			syn.seqNum = htonl(seqNum++);
-			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
-		}
-		else break;
-	}
-	// TODO: RTT
-
-#ifdef DEBUG
-	printf("SYN ACK received, with seqNum: %d\n", ntohl(syn_ack.seqNum));
-#endif
-
-	return syn_ack.seqNum;
-}
-
 void TCP::senderSetupConnection()
 {
 	// construct buffer
@@ -125,7 +99,7 @@ void TCP::senderSetupConnection()
 	// wait for ack + syn
 	ack_packet_t ack;
 	ack.type = ACK_HEADER;
-	ack.seqNum = receiveSynAck();
+	ack.seqNum = receiveStartSynAck();
 
 	// send ack
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
@@ -163,7 +137,7 @@ void TCP::senderTearDownConnection()
 
 void TCP::processAcks()
 {
-	printf("Ack Handler started up\n");
+
 }
 
 
@@ -224,54 +198,17 @@ TCP::TCP(char * hostUDPport)
 
 void TCP::receiverSetupConnection()
 {
-	int numbytes;
-	struct sockaddr their_addr;
-	socklen_t addr_len;
-	msg_header_t syn, syn_ack;
-	msg_packet_t packet;
-	addr_len = sizeof(their_addr);
+	msg_header_t syn_ack;
 
-	/********** receive SYN **********/
-	if ((numbytes = recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-		perror("recvfrom");
-		exit(1);
-	}
+	// receive SYN
+	syn_ack.seqNum = receiveStartSyn();
 
-	senderAddr = their_addr;
-	senderAddrLen = addr_len;
-	buffer->setSocketAddrInfo(sockfd, senderAddr, senderAddrLen);
-
-#ifdef DEBUG
-	printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));
-#endif
-
-	/********** Send SYN + ACK **********/
+	// send SYN + ACK
 	syn_ack.type = SYN_ACK_HEADER;
-	syn_ack.seqNum = syn.seqNum;
-	if ((numbytes = sendto(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) {
-		perror("talker: sendto");
-		exit(1);
-	}
+ 	sendto(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr *)&senderAddr, senderAddrLen);
 
-	/********** receive ACK or MSG and treat it accordingly **********/
-	if ((numbytes = recvfrom(sockfd, (char *)&packet, sizeof(msg_packet_t) , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-		perror("recvfrom");
-		exit(1);
-	}
-
-	if((uint)numbytes > sizeof(msg_header_t)){
-		// write message into buffer if ACK lost and message seen first
-		buffer->storeReceivedPacket(packet, numbytes);
-
-#ifdef DEBUG
-		((char *)&packet)[numbytes] = '\0';
-		printf("Packet received %s\n", (char *)&packet.msg);
-#endif
-	}else{
-#ifdef DEBUG
-		printf("ACK RECEIVED, SEQ NUM: %d\n", ntohl(packet.header.seqNum));
-#endif
-	}
+	// receive ACK
+	receiveStartAck(ntohl(syn_ack.seqNum));
 }
 
 void TCP::reliableReceive(char * filename)
@@ -312,3 +249,75 @@ bool TCP::receivePacket()
 
 	return true;
 }
+
+
+/*************** Startup Handshake Functions ***************/
+int TCP::receiveStartSyn()
+{
+	struct sockaddr theirAddr;
+    socklen_t theirAddrLen = sizeof(theirAddr);
+	msg_header_t syn;
+	int numbytes;
+
+	while(1){
+		if((numbytes = recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen)) == -1){
+			perror("recvfrom");
+		}
+
+		if((syn.type == SYN_HEADER) && (numbytes == sizeof(msg_header_t))){
+			break;
+		}
+	}
+
+	senderAddr = theirAddr;
+	senderAddrLen = theirAddrLen;
+	buffer->setSocketAddrInfo(sockfd, senderAddr, senderAddrLen);
+
+	return syn.seqNum;
+}
+
+int TCP::receiveStartSynAck()
+{
+	struct sockaddr theirAddr;
+    socklen_t theirAddrLen = sizeof(theirAddr);
+	msg_header_t syn, syn_ack;
+
+	syn.type = SYN_HEADER;
+	int seqNum = 1;
+
+	while(1){
+		if((recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1)
+			|| (syn_ack.type != SYN_ACK_HEADER)){
+			syn.seqNum = htonl(seqNum++);
+			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+		} else{
+			break;
+		}
+	}
+
+	return syn_ack.seqNum;
+}
+
+int TCP::receiveStartAck(int synAckSeqNum)
+{
+	struct sockaddr theirAddr;
+	socklen_t theirAddrLen = sizeof(theirAddr);
+	msg_packet_t packet;
+	msg_header_t syn_ack;
+
+	while(1){
+		if ((numbytes = recvfrom(sockfd, (char *)&packet, sizeof(msg_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
+		   perror("recvfrom");
+		 }
+
+		 // write message into buffer if ACK lost and message seen first
+		 if((uint)numbytes > sizeof(msg_header_t) && packet.header.type == DATA_HEADER){
+		   buffer->storeReceivedPacket(packet, numbytes);
+		   break;
+		 }
+
+		 sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+	}
+}
+
+/*************** Teardown Handshake Functions ***************/

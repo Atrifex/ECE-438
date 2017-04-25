@@ -59,7 +59,7 @@ bool CircularBuffer::fill()
             printf("Packet Length: %lu, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
 #endif
             // initialize header
-            data[j].header.type = DATA;
+            data[j].header.type = DATA_HEADER;
             data[j].header.seqNum = htonl(seqNum++);
             length[j] = packetLength;
 
@@ -160,7 +160,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         length[bufIdx] = packetLength - sizeof(msg_header_t);
 
 #ifdef DEBUG
-        printf("\nReceived seqNum: %lu\n", packet.header.seqNum);
+        printf("\nReceived seqNum: %d\n", packet.header.seqNum);
         printf("Index Store: %lu, RECEIVED length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
 #endif
 

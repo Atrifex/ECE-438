@@ -15,6 +15,6 @@
 #define SYN_ACK_HEADER      (0x03)
 #define FIN_HEADER          (0x04)
 #define FIN_ACK_HEADER      (0x05)
-#define DATA                (0x06)
+#define DATA_HEADER         (0x06)
 
 #endif

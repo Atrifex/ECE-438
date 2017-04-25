@@ -25,12 +25,21 @@ class TCP
         void sendWindow();
         void senderSetupConnection();
         void senderTearDownConnection();
-        int receiveSynAck();
 
         // Private Receiver Memeber Functions
         bool receivePacket();
         void receiverSetupConnection();
         void receiverTearDownConnection();
+
+        // Private Startup Handshake functions
+        int receiveStartSyn();
+        int receiveStartSynAck();
+        int receiveStartAck(int synAckSeqNum);
+
+        // Private Teardown Handshake functions
+        int receiveEndFin();
+        int receiveEndFinAck();
+        int receiveEndAck();
 
         // socket communication
         int sockfd;

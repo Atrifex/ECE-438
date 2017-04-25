@@ -63,6 +63,7 @@ using std::stack;
 using std::string;
 using std::to_string;
 using std::mutex;
+using std::unique_lock;
 using std::ifstream;
 using std::ofstream;
 using std::min;
