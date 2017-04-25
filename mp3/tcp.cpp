@@ -208,7 +208,7 @@ void TCP::receiverSetupConnection()
  	sendto(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr *)&senderAddr, senderAddrLen);
 
 	// receive ACK
-	receiveStartAck(ntohl(syn_ack.seqNum));
+	receiveStartAck(syn_ack);
 }
 
 void TCP::reliableReceive(char * filename)
@@ -298,25 +298,27 @@ int TCP::receiveStartSynAck()
 	return syn_ack.seqNum;
 }
 
-int TCP::receiveStartAck(int synAckSeqNum)
+void TCP::receiveStartAck(msg_header_t syn_ack)
 {
 	struct sockaddr theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 	msg_packet_t packet;
-	msg_header_t syn_ack;
+	int numbytes;
 
 	while(1){
 		if ((numbytes = recvfrom(sockfd, (char *)&packet, sizeof(msg_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
-		   perror("recvfrom");
-		 }
+			perror("recvfrom");
+		}
 
-		 // write message into buffer if ACK lost and message seen first
-		 if((uint)numbytes > sizeof(msg_header_t) && packet.header.type == DATA_HEADER){
-		   buffer->storeReceivedPacket(packet, numbytes);
-		   break;
-		 }
-
-		 sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+		// write message into buffer if ACK lost and message seen first
+		if(packet.header.type == DATA_HEADER && numbytes > (int)sizeof(msg_header_t)){
+			buffer->storeReceivedPacket(packet, numbytes);
+			break;
+		} else if(packet.header.type == ACK_HEADER){
+			break;
+		} else{
+			sendto(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, &theirAddr, theirAddrLen);
+		}
 	}
 }
 

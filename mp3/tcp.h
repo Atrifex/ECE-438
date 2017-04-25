@@ -34,7 +34,7 @@ class TCP
         // Private Startup Handshake functions
         int receiveStartSyn();
         int receiveStartSynAck();
-        int receiveStartAck(int synAckSeqNum);
+        void receiveStartAck(msg_header_t syn_ack);
 
         // Private Teardown Handshake functions
         int receiveEndFin();
