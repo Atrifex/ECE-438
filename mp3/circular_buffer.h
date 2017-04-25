@@ -19,8 +19,8 @@ class CircularBuffer
         void flush();
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
 
-        int startIdx;
-        int seqNum;
+        int sIdx;
+        uint seqNum;
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
         vector<uint32_t> length;

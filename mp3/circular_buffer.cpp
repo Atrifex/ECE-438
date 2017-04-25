@@ -19,13 +19,13 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     length.resize(size);
 
     seqNum = 0;
-    startIdx = 0;
+    sIdx = 0;
     bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
 }
 
 bool CircularBuffer::fill()
 {
-    size_t j = startIdx;
+    size_t j = sIdx;
     for(size_t i = 0; i < data.size(); i++) {
         if(bytesToTransfer <= 0)
             return false;
@@ -33,6 +33,9 @@ bool CircularBuffer::fill()
         if(state[j] == available){
             int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
+#ifdef DEBUG
+            printf("Packet Length: %d, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
+#endif
             // initialize header
             data[j].header.type = DATA;
             data[j].header.seqNum = htonl(seqNum++);
@@ -40,11 +43,6 @@ bool CircularBuffer::fill()
 
             // read data into buffer
             sourcefile.read(data[j].msg, packetLength - sizeof(msg_header_t));
-
-#ifdef DEBUG
-            ((char *)&data[j])[packetLength] = '\0';
-            printf("Packet loaded, size %d\n %s\n", packetLength - sizeof(msg_header_t),  (char *)&data[j].msg);
-#endif
 
             // book keeping
             state[j] = filled;
@@ -72,35 +70,45 @@ CircularBuffer::CircularBuffer(int size, char * filename)
     length.resize(size);
 
     seqNum = 0;
-    startIdx = 0;
+    sIdx = 0;
 }
 
 void CircularBuffer::flush()
 {
-    size_t j = startIdx;
+    printf("sIdx: %d\n" , sIdx);
     for(size_t i = 0; i < data.size(); i++) {
-        if(state[j] == received){
+        if(state[sIdx] == received){
+
+#ifdef DEBUG
+            printf("Packet Length: %d, SeqNum: %d\n" , length[sIdx], seqNum);
+#endif
             // write to file
-            destfile.write(data[j].msg, (length[j] - sizeof(msg_header_t)));
+            destfile.write(data[sIdx].msg, length[sIdx]);
+            destfile.flush();
 
             // book keeping
-            state[j] = waiting;
-            startIdx++;
+            state[sIdx] = waiting;
+            seqNum++;
+            sIdx = (sIdx+1)%data.size();
         } else{
             return;
         }
-        j = (j+1)%data.size();
     }
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
 {
     packet.header.seqNum = ntohl(packet.header.seqNum);
+
+    // drop packet if the seqNum is smaller than expected.
+    if(packet.header.seqNum < seqNum) return;
+
     if(state[(packet.header.seqNum % data.size())] == waiting){
         state[(packet.header.seqNum % data.size())] = received;
         data[(packet.header.seqNum % data.size())] = packet;
-        length[(packet.header.seqNum % data.size())] = packetLength;
+        length[(packet.header.seqNum % data.size())] = packetLength - sizeof(msg_header_t);
+        printf("Index Store: %d, Received length: %d\n", (packet.header.seqNum % data.size()), packetLength - sizeof(msg_header_t));
     }
 
-    // TODO: conditional wake up for writing packet to output file.
+    // TODO: launch thread to flush file.
 }
