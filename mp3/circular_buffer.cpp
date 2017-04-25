@@ -1,6 +1,11 @@
 
 #include "circular_buffer.h"
 
+// Socket information for sending ACKS
+int ackfd;
+struct sockaddr ackAddr;
+socklen_t ackAddrLen;
+
 CircularBuffer::~CircularBuffer() {
     if (sourcefile.is_open()) {
         sourcefile.close();
@@ -8,6 +13,13 @@ CircularBuffer::~CircularBuffer() {
     if (destfile.is_open()) {
         destfile.close();
     }
+}
+
+void CircularBuffer::setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen)
+{
+    ackfd = sockfd;
+    ackAddr = senderAddr;
+    ackAddrLen = senderAddrLen;
 }
 
 
@@ -83,11 +95,24 @@ CircularBuffer::CircularBuffer(int size, char * filename)
     sIdx = 0;
 }
 
+void sendAck(int seqNum){
+    // Set up ack packet
+    ack_packet_t ack;
+    ack.type = ACK_HEADER;
+    ack.seqNum = htonl(seqNum);
+
+    // send ack
+    sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+}
+
 void CircularBuffer::flush()
 {
     for(size_t i = 0; i < data.size(); i++) {
         pktLocks[sIdx].lock();
         if(state[sIdx] == received){
+
+            thread acker(sendAck, data[sIdx].header.seqNum);
+            acker.detach();
 
 #ifdef DEBUG
             printf("sIdx: %d\n" , sIdx);
@@ -135,6 +160,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         length[bufIdx] = packetLength - sizeof(msg_header_t);
 
 #ifdef DEBUG
+        printf("\nReceived seqNum: %lu\n", packet.header.seqNum);
         printf("Index Store: %lu, Received length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
 #endif
 

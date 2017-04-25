@@ -31,8 +31,8 @@ class TCP
 
         // socket communication
         int sockfd;
-        struct sockaddr sendAddr;    // needed for sendto
-        socklen_t sendAddrLen;          // needed for sendto
+        struct sockaddr receiverAddr, senderAddr;          // needed for sendto
+        socklen_t receiverAddrLen, senderAddrLen;          // needed for sendto
         struct timeval rtt;
 
         // Circular buffer that contains packets

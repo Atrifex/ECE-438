@@ -36,8 +36,8 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(2);
 	}
 
-	sendAddr  = *(servinfo->ai_addr);
-	sendAddrLen = servinfo->ai_addrlen;
+	receiverAddr  = *(servinfo->ai_addr);
+	receiverAddrLen = servinfo->ai_addrlen;
 
 	freeaddrinfo(servinfo);
 
@@ -87,8 +87,8 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 int TCP::receiveSynAck()
 {
-	struct sockaddr_storage receiverAddr;
-    socklen_t receiverAddrLen = sizeof(receiverAddr);
+	struct sockaddr_storage theirAddr;
+    socklen_t theirAddrLen = sizeof(theirAddr);
 	msg_header_t syn, syn_ack;
 
 	syn.type = SYN_HEADER;
@@ -96,9 +96,9 @@ int TCP::receiveSynAck()
 
 	// TODO: RTT
 	while(1){
-		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&receiverAddr, &receiverAddrLen) == -1){
+		if(recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			syn.seqNum = htonl(seqNum++);
-			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
+			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
 		}
 		else break;
 	}
@@ -119,7 +119,7 @@ void TCP::senderSetupConnection()
 	syn.seqNum = htonl(0);
 
 	// send
-	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &sendAddr, sendAddrLen);
+	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
 
 	// wait for ack + syn
 	ack_packet_t ack;
@@ -127,7 +127,7 @@ void TCP::senderSetupConnection()
 	ack.seqNum = receiveSynAck();
 
 	// send ack
-	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &sendAddr, sendAddrLen);
+	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
 }
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
@@ -144,6 +144,12 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 		// send
 		sendWindow();
 
+		ack_packet_t ack;
+		struct sockaddr_storage theirAddr;
+		socklen_t theirAddrLen = sizeof(theirAddr);
+		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
+			buffer->state[(ntohl(ack.seqNum)) % buffer->state.size()] = available;
+		}
 		// wait for ack
 		// TODO: increment sIdx
 	}
@@ -163,7 +169,7 @@ void TCP::sendWindow()
 	size_t j = buffer->sIdx;
 	for(size_t i = 0; i < buffer->data.size(); i++) {
 		if(buffer->state[j] == filled){
-			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &sendAddr, sizeof(sendAddr));
+			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 			buffer->state[j] = sent;
 			j = (j + 1) % buffer->data.size();
 		}
@@ -214,7 +220,7 @@ TCP::TCP(char * hostUDPport)
 void TCP::receiverSetupConnection()
 {
 	int numbytes;
-	struct sockaddr_storage their_addr;
+	struct sockaddr their_addr;
 	socklen_t addr_len;
 	msg_header_t syn, syn_ack;
 	msg_packet_t packet;
@@ -225,6 +231,10 @@ void TCP::receiverSetupConnection()
 		perror("recvfrom");
 		exit(1);
 	}
+
+	senderAddr = their_addr;
+	senderAddrLen = addr_len;
+	buffer->setSocketAddrInfo(sockfd, senderAddr, senderAddrLen);
 
 #ifdef DEBUG
 	printf("SYN RECEIVED, SEQ NUM: %d\n", ntohl(syn.seqNum));

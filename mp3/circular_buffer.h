@@ -20,6 +20,9 @@ class CircularBuffer
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
         void flush();
 
+        void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
+
+        // member variables
         int sIdx;
 
         mutex seqNumLock;
