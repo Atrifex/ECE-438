@@ -95,6 +95,7 @@ void TCP::senderSetupConnection()
 
 	// send
 	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+	state = SYN_SENT;
 
 	// wait for ack + syn
 	ack_packet_t ack;
@@ -117,6 +118,7 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 
 	// Set up TCP connection
 	senderSetupConnection();
+
 	state = ESTABLISHED;
 
 	// send data
@@ -202,6 +204,7 @@ void TCP::receiverSetupConnection()
 
 	// receive SYN
 	syn_ack.seqNum = receiveStartSyn();
+	state = SYN_RECVD;
 
 	// send SYN + ACK
 	syn_ack.type = SYN_ACK_HEADER;
@@ -220,6 +223,8 @@ void TCP::reliableReceive(char * filename)
 
 	// Set up TCP connection
 	receiverSetupConnection();
+
+	state = ESTABLISHED;
 
 	while(1){
 		if(receivePacket() == false) break;
