@@ -125,7 +125,10 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	buffer->fill();
 	thread ackHandler(ackProcessor, ref(*this));
 	ackHandler.detach();
-	while(state == ESTABLISHED) sendWindow();
+	while(state == ESTABLISHED){
+		sendWindow();
+		buffer->fill();
+	}
 
 	// tear down TCP connection
 	senderTearDownConnection();
@@ -137,11 +140,13 @@ void TCP::senderTearDownConnection()
 
 }
 
+
 void TCP::processAcks()
 {
+	while(1){
 
+	}
 }
-
 
 void TCP::sendWindow()
 {
@@ -229,6 +234,7 @@ void TCP::reliableReceive(char * filename)
 	while(1){
 		if(receivePacket() == false) break;
 	}
+
 	// tear down TCP connection
 
 }
