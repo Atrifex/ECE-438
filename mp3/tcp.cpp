@@ -145,7 +145,25 @@ void TCP::senderTearDownConnection()
 
 void TCP::processAcks()
 {
-	while(1);
+	ack_packet_t ack;
+	struct sockaddr_storage theirAddr;
+	socklen_t theirAddrLen = sizeof(theirAddr);
+
+	while(1){
+		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
+			// time out
+			continue;
+		}else{
+			ack.seqNum = ntohl(ack.seqNum);
+			// cout << "Got ACK for: " << ack.seqNum << endl;
+		}
+
+		unique_lock<mutex> lkAck(buffer->pktLocks[(ack.seqNum) % buffer->data.size()]);
+		buffer->state[(ack.seqNum) % buffer->data.size()] = AVAILABLE;
+
+		lkAck.unlock();
+		buffer->fillerCV.notify_one();
+	}
 }
 
 void TCP::sendWindow()
@@ -158,12 +176,15 @@ void TCP::sendWindow()
 					return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
 			});
 
+			// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
+
 			if(buffer->state[i] == FILLED){
 				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
 				buffer->state[i] = SENT;
 			}else if(buffer->state[i] == RETRANSMIT){
 				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
 				buffer->state[i] = SENT;
+
 				// drop lock asap
 				lkSend.unlock();
 

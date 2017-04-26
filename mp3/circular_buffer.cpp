@@ -48,10 +48,13 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 bool CircularBuffer::fill()
 {
     while(1){
-        for(size_t i = 0; i < data.size(); i++) {
+        int bufferSize = data.size();
+        for(int i = 0; i < bufferSize; i++) {
             if(bytesToTransfer <= 0){
                 return false;
             }
+
+            // cout << "Got to this point" << endl;
 
             unique_lock<mutex> lkFill(pktLocks[i]);
             fillerCV.wait(lkFill, [=]{return state[i] == AVAILABLE;});
@@ -59,7 +62,7 @@ bool CircularBuffer::fill()
             int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
 #ifdef DEBUG
-            printf("Data Length: %lu, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
+            cout << "Data length: " <<  packetLength - sizeof(msg_header_t) << ", seqNum: " << seqNum << endl;
 #endif
             // initialize header
             data[i].header.type = DATA_HEADER;
