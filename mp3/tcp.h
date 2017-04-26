@@ -16,15 +16,15 @@ class TCP
 
         // Public Sender Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
-        void processAcks();
+        void sendWindow();
 
         // Public Receiver Member Functions
         void reliableReceive(char * filename);
     private:
         // Private Sender Member Functions
-        void sendWindow();
         void senderSetupConnection();
         void senderTearDownConnection();
+        void processAcks();
 
         // Private Receiver Memeber Functions
         bool receivePacket();

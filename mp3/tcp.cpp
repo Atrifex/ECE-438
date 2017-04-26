@@ -106,8 +106,13 @@ void TCP::senderSetupConnection()
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
 }
 
-void ackProcessor(TCP & connection) {
-    connection.processAcks();
+
+void bufferFiller(CircularBuffer & buffer) {
+	buffer.fill();
+}
+
+void packetSender(TCP & connection) {
+	connection.sendWindow();
 }
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
@@ -122,13 +127,9 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	state = ESTABLISHED;
 
 	// send data
-	buffer->fill();
-	thread ackHandler(ackProcessor, ref(*this));
-	ackHandler.detach();
-	while(state == ESTABLISHED){
-		sendWindow();
-		buffer->fill();
-	}
+	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
+	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
+	processAcks();
 
 	// tear down TCP connection
 	senderTearDownConnection();
@@ -143,21 +144,42 @@ void TCP::senderTearDownConnection()
 
 void TCP::processAcks()
 {
-	while(1){
 
-	}
 }
 
 void TCP::sendWindow()
 {
-	size_t j = buffer->sIdx;
-	for(size_t i = 0; i < buffer->data.size(); i++) {
-		if(buffer->state[j] == FILLED){
-			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
-			buffer->state[j] = SENT;
-			j = (j + 1) % buffer->data.size();
+	while(state == ESTABLISHED){
+		int bufferSize = buffer->data.size();
+		for(int i = 0; i < bufferSize; i++) {
+			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
+			buffer->senderCV.wait(lkSend, [=]{
+					return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
+			});
+
+			if(buffer->state[i] == FILLED){
+				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+				buffer->state[i] = SENT;
+			}else if(buffer->state[i] == RETRANSMIT){
+				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+				buffer->state[i] = SENT;
+				// drop lock asap
+				lkSend.unlock();
+
+				uint j = (i + 1) % bufferSize;
+				for(int k = 0; k < bufferSize; k++){
+					if(buffer->state[j] == RETRANSMIT){
+						unique_lock<mutex> lkRetrans(buffer->pktLocks[j]);
+						sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
+						buffer->state[i] = SENT;
+					}
+					j = (j + 1) % bufferSize;
+				}
+				// Retransmission so can't move forward
+				i--;
+			}
 		}
-	}
+    }
 }
 
 /*************** Receiver Functions ***************/
@@ -254,7 +276,7 @@ bool TCP::receivePacket()
 		exit(1);
 	}
 
-	if(packet.header.type == FIN_HEADER) return false;
+	if(packet.header.type != DATA_HEADER) return false;
 
 	buffer->storeReceivedPacket(packet, numbytes);
 

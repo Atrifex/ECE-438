@@ -31,7 +31,11 @@ class CircularBuffer
         vector<packet_state_t> state;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
+
+
         mutex pktLocks[MAX_WINDOW_SIZE];
+        condition_variable senderCV;
+        condition_variable fillerCV;
 
         unsigned long long int bytesToTransfer;
     private:

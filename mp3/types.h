@@ -12,6 +12,7 @@
 #include <stack>
 #include <utility>
 #include <mutex>
+#include <condition_variable>
 #include <thread>
 #include <chrono>
 #include <functional>
@@ -47,6 +48,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+
+
+
 using std::thread;
 using std::ref;
 
@@ -67,6 +71,8 @@ using std::unique_lock;
 using std::ifstream;
 using std::ofstream;
 using std::min;
+using std::unique_lock;
+using std::condition_variable;
 
 typedef pair<int,int> int_pair;
 
@@ -92,7 +98,7 @@ typedef struct {
 
 typedef enum : uint8_t {
     /***** Sender States *****/
-    AVAILABLE, FILLED, SENT, ACKED,
+    AVAILABLE, FILLED, RETRANSMIT, SENT, ACKED,
 
     /***** Receiver States *****/
     WAITING, RECEIVED

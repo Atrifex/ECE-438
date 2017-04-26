@@ -56,7 +56,7 @@ bool CircularBuffer::fill()
             int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
 #ifdef DEBUG
-            printf("Packet Length: %lu, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
+            printf("Data Length: %lu, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
 #endif
             // initialize header
             data[j].header.type = DATA_HEADER;
