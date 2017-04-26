@@ -47,30 +47,35 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 
 bool CircularBuffer::fill()
 {
-    size_t j = sIdx;
-    for(size_t i = 0; i < data.size(); i++) {
-        if(bytesToTransfer <= 0)
-            return false;
+    while(1){
+        for(size_t i = 0; i < data.size(); i++) {
+            if(bytesToTransfer <= 0){
+                return false;
+            }
 
-        if(state[j] == AVAILABLE){
+            unique_lock<mutex> lkFill(pktLocks[i]);
+            fillerCV.wait(lkFill, [=]{return state[i] == AVAILABLE;});
+
             int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
 
 #ifdef DEBUG
             printf("Data Length: %lu, SeqNum: %d\n" , packetLength - sizeof(msg_header_t), seqNum);
 #endif
             // initialize header
-            data[j].header.type = DATA_HEADER;
-            data[j].header.seqNum = htonl(seqNum++);
-            length[j] = packetLength;
+            data[i].header.type = DATA_HEADER;
+            data[i].header.seqNum = htonl(seqNum++);
+            length[i] = packetLength;
 
             // read data into buffer
-            sourcefile.read(data[j].msg, packetLength - sizeof(msg_header_t));
+            sourcefile.read(data[i].msg, packetLength - sizeof(msg_header_t));
 
             // book keeping
-            state[j] = FILLED;
+            state[i] = FILLED;
+            lkFill.unlock();
+            senderCV.notify_one();
+
             bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;
         }
-        j = (j+1)%data.size();
     }
 
     // launch thread to fill large buffer that isnt the cirular buffer

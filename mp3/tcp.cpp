@@ -109,6 +109,7 @@ void TCP::senderSetupConnection()
 
 void bufferFiller(CircularBuffer & buffer) {
 	buffer.fill();
+	cout << "All data has been read from the buffer";
 }
 
 void packetSender(TCP & connection) {
@@ -144,7 +145,7 @@ void TCP::senderTearDownConnection()
 
 void TCP::processAcks()
 {
-
+	while(1);
 }
 
 void TCP::sendWindow()
