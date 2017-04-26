@@ -37,9 +37,8 @@ class TCP
         void receiveStartAck(msg_header_t syn_ack);
 
         // Private Teardown Handshake functions
-        int receiveEndFin();
         int receiveEndFinAck();
-        int receiveEndAck();
+        void receiveEndAck(msg_header_t fin_ack);
 
         // socket communication
         int sockfd;

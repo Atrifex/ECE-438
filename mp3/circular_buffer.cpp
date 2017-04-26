@@ -45,16 +45,14 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
 }
 
-bool CircularBuffer::fill()
+void CircularBuffer::fill()
 {
     while(1){
         int bufferSize = data.size();
         for(int i = 0; i < bufferSize; i++) {
             if(bytesToTransfer <= 0){
-                return false;
+                return;
             }
-
-            // cout << "Got to this point" << endl;
 
             unique_lock<mutex> lkFill(pktLocks[i]);
             fillerCV.wait(lkFill, [=]{return state[i] == AVAILABLE;});
@@ -80,10 +78,6 @@ bool CircularBuffer::fill()
             bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;
         }
     }
-
-    // launch thread to fill large buffer that isnt the cirular buffer
-
-    return true;
 }
 
 /*************** Receive Buffer ***************/

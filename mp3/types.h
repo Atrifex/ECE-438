@@ -106,11 +106,11 @@ typedef enum : uint8_t {
 
 typedef enum : uint8_t {
     CLOSED, LISTEN,
-    SYN_RECVD,      // receiver side
     SYN_SENT,       // sender side
+    SYN_RECVD,      // receiver side
     ESTABLISHED,    // both
-
-    // Might need fin_wait
+    FIN_SENT,
+    FIN_RCVD,
     CLOSING, TIME_WAIT
 } tcp_state_t;
 

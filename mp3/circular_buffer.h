@@ -14,7 +14,7 @@ class CircularBuffer
         ~CircularBuffer();
 
         // sender member function
-        bool fill();
+        void fill();
 
         // receiver member function
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);

@@ -11,6 +11,14 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void bufferFiller(CircularBuffer & buffer) {
+	buffer.fill();
+}
+
+void packetSender(TCP & connection) {
+	connection.sendWindow();
+}
+
 TCP::~TCP(){
 	delete buffer;
 	close(sockfd);
@@ -88,7 +96,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 void TCP::senderSetupConnection()
 {
-	// construct buffer
 	msg_header_t syn;
 	syn.type = SYN_HEADER;
 	syn.seqNum = htonl(0);
@@ -104,16 +111,6 @@ void TCP::senderSetupConnection()
 
 	// send ack
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
-}
-
-
-void bufferFiller(CircularBuffer & buffer) {
-	buffer.fill();
-	cout << "All data has been read from the buffer";
-}
-
-void packetSender(TCP & connection) {
-	connection.sendWindow();
 }
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
@@ -132,6 +129,8 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
 	processAcks();
 
+	state = CLOSING;
+
 	// tear down TCP connection
 	senderTearDownConnection();
 
@@ -139,7 +138,23 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 
 void TCP::senderTearDownConnection()
 {
+	msg_header_t fin;
+	fin.type = FIN_HEADER;
+	fin.seqNum = htonl(0);
 
+	// send FIN
+	sendto(sockfd, (char *)&fin, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+	state = FIN_SENT;
+
+	// wait for FIN + ACK
+	ack_packet_t ack;
+	ack.type = ACK_HEADER;
+	ack.seqNum = receiveEndFinAck();
+
+	// send ACK
+	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
+
+	state = CLOSED;
 }
 
 
@@ -173,7 +188,7 @@ void TCP::sendWindow()
 		for(int i = 0; i < bufferSize; i++) {
 			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
 			buffer->senderCV.wait(lkSend, [=]{
-					return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
+				return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
 			});
 
 			// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
@@ -279,10 +294,28 @@ void TCP::reliableReceive(char * filename)
 		if(receivePacket() == false) break;
 	}
 
-	// tear down TCP connection
+	state = CLOSING;
 
+	// tear down TCP connection
+	receiverTearDownConnection();
 }
 
+void TCP::receiverTearDownConnection()
+{
+	msg_header_t fin_ack;
+
+	// FIN received in receivePacket function
+	state = SYN_RECVD;
+
+	// send FIN + ACK
+	fin_ack.type = FIN_ACK_HEADER;
+ 	sendto(sockfd, (char *)&fin_ack, sizeof(msg_header_t), 0, (struct sockaddr *)&senderAddr, senderAddrLen);
+
+	// receive ACK
+	receiveEndAck(fin_ack);
+
+	state = CLOSED;
+}
 
 
 bool TCP::receivePacket()
@@ -298,7 +331,11 @@ bool TCP::receivePacket()
 		exit(1);
 	}
 
-	if(packet.header.type != DATA_HEADER) return false;
+	// start closing connection
+	if(packet.header.type == FIN_HEADER) return false;
+
+	// if garbage packet, then drop but wait to close connection
+	if(packet.header.type != DATA_HEADER) return true;
 
 	buffer->storeReceivedPacket(packet, numbytes);
 
@@ -378,3 +415,45 @@ void TCP::receiveStartAck(msg_header_t syn_ack)
 }
 
 /*************** Teardown Handshake Functions ***************/
+int TCP::receiveEndFinAck()
+{
+	struct sockaddr theirAddr;
+    socklen_t theirAddrLen = sizeof(theirAddr);
+	msg_header_t fin, fin_ack;
+
+	fin.type = FIN_HEADER;
+	int seqNum = 1;
+
+	while(1){
+		if((recvfrom(sockfd, (char *)&fin_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1)
+			|| (fin_ack.type != FIN_ACK_HEADER)){
+			fin.seqNum = htonl(seqNum++);
+			sendto(sockfd, (char *)&fin, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+		} else{
+			break;
+		}
+	}
+
+	return fin_ack.seqNum;
+}
+
+void TCP::receiveEndAck(msg_header_t fin_ack)
+{
+	struct sockaddr theirAddr;
+	socklen_t theirAddrLen = sizeof(theirAddr);
+	ack_packet_t ack;
+	int numbytes;
+
+	while(1){
+		if ((numbytes = recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
+			perror("recvfrom");
+		}
+
+		// write message into buffer if ACK lost and message seen first
+		if(ack.type == ACK_HEADER){
+			break;
+		} else{
+			sendto(sockfd, (char *)&fin_ack, sizeof(msg_header_t), 0, &theirAddr, theirAddrLen);
+		}
+	}
+}
