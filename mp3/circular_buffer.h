@@ -1,5 +1,5 @@
-#ifndef SEND_BUFFER_H
-#define SEND_BUFFER_H
+#ifndef CIRCULAR_BUFFER_H
+#define CIRCULAR_BUFFER_H
 
 #include "parameters.h"
 #include "types.h"
@@ -24,6 +24,7 @@ class CircularBuffer
 
         // member variables
         int sIdx;
+        unsigned int payload;
 
         mutex seqNumLock;
         uint32_t seqNum;

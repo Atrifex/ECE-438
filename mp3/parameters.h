@@ -1,12 +1,12 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
+#include "types.h"
+
 // TODO: Use extra input from the terminal to test different window sizes
-#define SWS (1)
+#define SWS (16)
 #define RWS (SWS)
 #define MAX_WINDOW_SIZE (256)
-
-#define PAYLOAD (1472)
 
 #define INIT_RTT (1000000)  // 1000 ms is
 

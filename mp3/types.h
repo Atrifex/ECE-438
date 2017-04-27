@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "parameters.h"
+
 #include <cstdlib>
 #include <algorithm>
 #include <stdio.h>
@@ -83,10 +85,12 @@ typedef struct {
     uint32_t seqNum;
 } msg_header_t;
 
+#define PAYLOAD (1472 - sizeof(msg_header_t))
+
 #pragma pack(1)
 typedef struct {
     msg_header_t header;
-    char msg[PAYLOAD - sizeof(msg_header_t)];
+    char msg[PAYLOAD];
 } msg_packet_t;
 
 #pragma pack(1)

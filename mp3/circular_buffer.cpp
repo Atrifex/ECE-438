@@ -40,6 +40,7 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     data.resize(size);
     length.resize(size);
 
+    payload = PAYLOAD;
     seqNum = 0;
     sIdx = 0;
     bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
@@ -57,25 +58,25 @@ void CircularBuffer::fill()
             unique_lock<mutex> lkFill(pktLocks[i]);
             fillerCV.wait(lkFill, [=]{return state[i] == AVAILABLE;});
 
-            int packetLength = min((unsigned long long)PAYLOAD, bytesToTransfer + sizeof(msg_header_t));
+            int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
 #ifdef DEBUG
-            cout << "Data length: " <<  packetLength - sizeof(msg_header_t) << ", seqNum: " << seqNum << endl;
+            cout << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << endl;
 #endif
             // initialize header
             data[i].header.type = DATA_HEADER;
             data[i].header.seqNum = htonl(seqNum++);
-            length[i] = packetLength;
+            length[i] = packetLength + sizeof(msg_header_t);
 
             // read data into buffer
-            sourcefile.read(data[i].msg, packetLength - sizeof(msg_header_t));
+            sourcefile.read(data[i].msg, packetLength);
 
             // book keeping
             state[i] = FILLED;
             lkFill.unlock();
             senderCV.notify_one();
 
-            bytesToTransfer -= (packetLength - sizeof(msg_header_t)) ;
+            bytesToTransfer -= packetLength;
         }
     }
 }

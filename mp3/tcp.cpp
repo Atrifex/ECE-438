@@ -172,7 +172,7 @@ void TCP::manager()
 	while(1){
 
 		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-			// time out
+			
 			continue;
 		}else{
 			unique_lock<mutex> lk(ackQLock);
