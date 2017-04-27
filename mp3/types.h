@@ -47,13 +47,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
+#include <list>
 
 
 
 using std::thread;
 using std::ref;
-
+using std::list;
 using std::cout;
 using std::endl;
 using std::vector;

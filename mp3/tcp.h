@@ -17,6 +17,7 @@ class TCP
         // Public Sender Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
         void sendWindow();
+        void processAcks();
 
         // Public Receiver Member Functions
         void reliableReceive(char * filename);
@@ -24,7 +25,7 @@ class TCP
         // Private Sender Member Functions
         void senderSetupConnection();
         void senderTearDownConnection();
-        void processAcks();
+        void manager();
 
         // Private Receiver Memeber Functions
         bool receivePacket();
@@ -40,14 +41,27 @@ class TCP
         int receiveEndFinAck();
         void receiveEndAck(msg_header_t fin_ack);
 
+        // RTT function
+        unsigned long long calcRTO();
+        unsigned long long calcSRRT();
+        unsigned long long stdDev();
+
         // socket communication
         int sockfd;
         struct sockaddr receiverAddr, senderAddr;          // needed for sendto
         socklen_t receiverAddrLen, senderAddrLen;          // needed for sendto
-        struct timeval rtt;
 
         // Circular buffer that contains packets
         CircularBuffer * buffer;
+
+        // Round trip time and Retransmit time out
+        struct timeval rtt, srtt, rto;
+        list<unsigned long long> history;
+
+        // Ack processing
+        mutex ackQLock;
+        condition_variable ackCV;
+        queue<ack_packet_t> ackQ;
 
         // Book keeping
         tcp_state_t state;

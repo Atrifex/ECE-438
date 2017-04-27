@@ -19,6 +19,10 @@ void packetSender(TCP & connection) {
 	connection.sendWindow();
 }
 
+void ackProcessor(TCP & connection) {
+	connection.processAcks();
+}
+
 TCP::~TCP(){
 	delete buffer;
 	close(sockfd);
@@ -84,9 +88,9 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	freeaddrinfo(servinfo);
 
 	// Initial time out estimation
-	rtt.tv_sec = 1;
-	rtt.tv_usec = 0;
-	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rtt, sizeof(rtt)) < 0) {
+	rto.tv_sec = 1;
+	rto.tv_usec = 0;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto)) < 0) {
 		perror("setsockopt");
 		exit(3);
 	}
@@ -100,16 +104,16 @@ void TCP::senderSetupConnection()
 	syn.type = SYN_HEADER;
 	syn.seqNum = htonl(0);
 
-	// send
+	// send SYN
 	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
 	state = SYN_SENT;
 
-	// wait for ack + syn
+	// wait for SYN + ACK
 	ack_packet_t ack;
 	ack.type = ACK_HEADER;
 	ack.seqNum = receiveStartSynAck();
 
-	// send ack
+	// send ACK
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
 }
 
@@ -127,7 +131,8 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	// send data
 	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
 	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
-	processAcks();
+	thread ackHandler(ackProcessor, ref(*(this))); ackHandler.detach();
+	manager();
 
 	state = CLOSING;
 
@@ -158,28 +163,50 @@ void TCP::senderTearDownConnection()
 }
 
 
-void TCP::processAcks()
+void TCP::manager()
 {
 	ack_packet_t ack;
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 
 	while(1){
+
 		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			// time out
 			continue;
 		}else{
-			ack.seqNum = ntohl(ack.seqNum);
-			// cout << "Got ACK for: " << ack.seqNum << endl;
+			unique_lock<mutex> lk(ackQLock);
+			ackQ.push(ack);
+			lk.unlock();
+			ackCV.notify_one();
 		}
-
-		unique_lock<mutex> lkAck(buffer->pktLocks[(ack.seqNum) % buffer->data.size()]);
-		buffer->state[(ack.seqNum) % buffer->data.size()] = AVAILABLE;
-
-		lkAck.unlock();
-		buffer->fillerCV.notify_one();
 	}
 }
+
+void TCP::processAcks()
+{
+	ack_packet_t ack;
+
+	while(1){
+
+		{
+			unique_lock<mutex> lk(ackQLock);
+			ackCV.wait(lk, [&](){ return (!ackQ.empty()); });
+			ack = ackQ.front();
+			ackQ.pop();
+		}
+
+		ack.seqNum = ntohl(ack.seqNum);
+
+		{
+			unique_lock<mutex> lkAck(buffer->pktLocks[(ack.seqNum) % buffer->data.size()]);
+			buffer->state[(ack.seqNum) % buffer->data.size()] = AVAILABLE;
+			buffer->fillerCV.notify_one();
+		}
+
+	}
+}
+
 
 void TCP::sendWindow()
 {
