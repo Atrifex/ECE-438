@@ -41,9 +41,10 @@ class TCP
         void receiveEndAck(msg_header_t fin_ack);
 
         // RTT function
-        unsigned long long calcRTO();
-        unsigned long long calcSRRT();
-        unsigned long long stdDev();
+        void updateTimingConstraints(unsigned long long rttSample);
+        double stdDevRTT();
+        double stdWeight();
+        double srttWeight();
 
         // socket communication
         int sockfd;
@@ -54,8 +55,12 @@ class TCP
         CircularBuffer * buffer;
 
         // Round trip time and Retransmit time out
-        struct timeval rtt, srtt, rto;
+        struct timeval rto;
+        double srtt;
         deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
+        unsigned long long runningTotal;
+        unsigned long long numAcksTotal;
+        double meanRTT;
 
         // Book keeping
         tcp_state_t state;

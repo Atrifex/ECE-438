@@ -166,32 +166,78 @@ void TCP::processAcks()
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 	int bufferIdx;
+	unsigned long long rttSample;
 
 	while(true){
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			// process time outs
-			cout << "There was a time out, RTO: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
+			cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
 			continue;
 		}
 
 		gettimeofday(&(pACK.time), 0);
 		pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
 		bufferIdx = (pACK.ack.seqNum % buffer->data.size());
+
 		{
 			unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
 			buffer->state[bufferIdx] = AVAILABLE;
 
-#ifdef DEBUG
-			// cout << "RTT in microseconds: " << (1000000*pACK.time.tv_sec - 1000000*buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec << endl;
-#endif
+			rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec;
 
 			lkAck.unlock();
 			buffer->fillerCV.notify_one();
 		}
 
+		updateTimingConstraints(rttSample);
 	}
 }
+
+void TCP::updateTimingConstraints(unsigned long long rttSample)
+{
+	double rtoNext;
+	if(rttHistory.size() >= MAX_RTT_HISTORY){
+		// once we have hit the max history, start dorping values
+		rttHistory.pop_front();
+		rttHistory.push_back(rttSample);
+	}else{
+		// build up history
+		rttHistory.push_back(rttSample);
+	}
+
+	// updated SRTT
+	srtt = (1.0 - ALPHA)*srrt + ALPHA*((double)rttSample);
+
+	// update RTO
+	rtoNext = srttWeight()*srtt + stdWeight()*stdDevRTT();
+	rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
+	rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
+
+	#ifdef DEBUG
+		// cout << "SRTT weight: " << srttWeight() << endl;
+		// cout << "STD weight: " << stdWeight()  << endl << endl;
+		cout << "RTT in microseconds: " << rttHistory.back() << endl;
+		cout << "RTO in microseconds: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
+	#endif
+
+
+}
+
+
+double TCP::stdDevRTT()
+{
+	return  1.0;
+}
+
+inline double TCP::stdWeight(){
+	return (STD_SLOPE*((double)rttHistory.size()));
+}
+
+inline double TCP::srttWeight(){
+	return (SRTT_SLOPE*((double)rttHistory.size()) + MAX_SRTT_WEIGHT);
+}
+
 
 void TCP::sendWindow()
 {
