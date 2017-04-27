@@ -50,7 +50,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <list>
-
+#include <deque>
 
 
 using std::thread;
@@ -64,6 +64,7 @@ using std::priority_queue;
 using std::pair;
 using std::make_pair;
 using std::greater;
+using std::deque;
 using std::queue;
 using std::stack;
 using std::string;
@@ -77,7 +78,6 @@ using std::unique_lock;
 using std::condition_variable;
 
 typedef pair<int,int> int_pair;
-
 
 #pragma pack(1)
 typedef struct {

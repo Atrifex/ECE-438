@@ -62,7 +62,7 @@ void CircularBuffer::fill()
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
 #ifdef DEBUG
-            cout << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << endl;
+            //cout << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << endl;
 #endif
             // initialize header
             data[i].header.type = DATA_HEADER;

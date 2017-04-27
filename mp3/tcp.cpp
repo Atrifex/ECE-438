@@ -19,10 +19,6 @@ void packetSender(TCP & connection) {
 	connection.sendWindow();
 }
 
-void ackProcessor(TCP & connection) {
-	connection.processAcks();
-}
-
 TCP::~TCP(){
 	delete buffer;
 	close(sockfd);
@@ -88,7 +84,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	freeaddrinfo(servinfo);
 
 	// Initial time out estimation
-	rto.tv_sec = 1;
+	rto.tv_sec = INIT_RTO;
 	rto.tv_usec = 0;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto)) < 0) {
 		perror("setsockopt");
@@ -100,18 +96,20 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 void TCP::senderSetupConnection()
 {
+	struct timeval synTime;
 	msg_header_t syn;
 	syn.type = SYN_HEADER;
 	syn.seqNum = htonl(0);
 
 	// send SYN
+	gettimeofday(&synTime, 0);
 	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
 	state = SYN_SENT;
 
 	// wait for SYN + ACK
 	ack_packet_t ack;
 	ack.type = ACK_HEADER;
-	ack.seqNum = receiveStartSynAck();
+	ack.seqNum = receiveStartSynAck(synTime);
 
 	// send ACK
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
@@ -131,8 +129,7 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	// send data
 	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
 	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
-	thread ackHandler(ackProcessor, ref(*(this))); ackHandler.detach();
-	manager();
+	processAcks();
 
 	state = CLOSING;
 
@@ -163,53 +160,38 @@ void TCP::senderTearDownConnection()
 }
 
 
-void TCP::manager()
+void TCP::processAcks()
 {
 	ack_process_t pACK;
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
+	int bufferIdx;
 
-	while(1){
-
+	while(true){
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-
+			// process time outs
+			cout << "There was a time out, RTO: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
 			continue;
-		}else{
-			gettimeofday(&(pACK.time), 0);
-			{
-				unique_lock<mutex> lk(ackQLock);
-				ackQ.push(pACK);
-				lk.unlock();
-				ackCV.notify_one();
-			}
-		}
-	}
-}
-
-void TCP::processAcks()
-{
-	ack_process_t pACK;
-
-	while(1){
-
-		{
-			unique_lock<mutex> lk(ackQLock);
-			ackCV.wait(lk, [&](){ return (!ackQ.empty()); });
-			pACK = ackQ.front();
-			ackQ.pop();
 		}
 
+		gettimeofday(&(pACK.time), 0);
 		pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
-
+		bufferIdx = (pACK.ack.seqNum % buffer->data.size());
 		{
-			unique_lock<mutex> lkAck(buffer->pktLocks[(pACK.ack.seqNum) % buffer->data.size()]);
-			buffer->state[(pACK.ack.seqNum) % buffer->data.size()] = AVAILABLE;
+			unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
+			buffer->state[bufferIdx] = AVAILABLE;
+
+#ifdef DEBUG
+			// cout << "RTT in microseconds: " << (1000000*pACK.time.tv_sec - 1000000*buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec << endl;
+#endif
+
+			lkAck.unlock();
 			buffer->fillerCV.notify_one();
 		}
 
 	}
 }
-
 
 void TCP::sendWindow()
 {
@@ -221,14 +203,15 @@ void TCP::sendWindow()
 				return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
 			});
 
+#ifdef DEBUG
 			// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
+#endif
 
 			if(buffer->state[i] == FILLED){
-				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
-
-				// record timestamp after sending
+				// record timestamp before sending
 				gettimeofday(&(buffer->timestamp[i]), 0);
 
+				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
 				buffer->state[i] = SENT;
 			}else if(buffer->state[i] == RETRANSMIT){
 				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
@@ -324,7 +307,7 @@ void TCP::reliableReceive(char * filename)
 
 	state = ESTABLISHED;
 
-	while(1){
+	while(true){
 		if(receivePacket() == false) break;
 	}
 
@@ -385,7 +368,7 @@ int TCP::receiveStartSyn()
 	msg_header_t syn;
 	int numbytes;
 
-	while(1){
+	while(true){
 		if((numbytes = recvfrom(sockfd, (char *)&syn, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen)) == -1){
 			perror("recvfrom");
 		}
@@ -402,26 +385,53 @@ int TCP::receiveStartSyn()
 	return syn.seqNum;
 }
 
-int TCP::receiveStartSynAck()
+int TCP::receiveStartSynAck(struct timeval synZeroTime)
 {
 	struct sockaddr theirAddr;
     socklen_t theirAddrLen = sizeof(theirAddr);
 	msg_header_t syn, syn_ack;
 
+	// Determinining initial RTT
+	struct timeval synAckTime;
+	vector<struct timeval> synTimeVec(START_TIME_VEC_SIZE);
+	synTimeVec[0] = synZeroTime;
+	unsigned long long initialRTT, initialRTO;
+
 	syn.type = SYN_HEADER;
 	int seqNum = 1;
 
-	while(1){
+	while(true){
 		if((recvfrom(sockfd, (char *)&syn_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1)
 			|| (syn_ack.type != SYN_ACK_HEADER)){
-			syn.seqNum = htonl(seqNum++);
+
+			// store the next syntime
+			syn.seqNum = htonl(seqNum);
+			gettimeofday(&synTimeVec[seqNum%START_TIME_VEC_SIZE], 0);
 			sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+			seqNum++;
 		} else{
-			break;
+			// Determine initial RTT
+			gettimeofday(&synAckTime, 0);
+			int synTimeIndex = ntohl(syn_ack.seqNum)%START_TIME_VEC_SIZE;
+			initialRTT = US_PER_SEC*(synAckTime.tv_sec - synTimeVec[synTimeIndex].tv_sec) +  synAckTime.tv_usec - synTimeVec[synTimeIndex].tv_usec;
+
+			// Assign RTO and same initialRTT
+			rttHistory.push_back(initialRTT);
+			initialRTO = 2*initialRTT;
+			rto.tv_sec = initialRTO/US_PER_SEC;
+			rto.tv_usec = initialRTO%US_PER_SEC;
+
+#ifdef DEBUG
+			// cout << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
+			// cout << "Initial RTT in microseconds: " << rttHistory[0] << endl;
+			// cout << "Initial RTO secs: " << rto.tv_sec << endl;
+			// cout << "Initial RTO microseconds: " << rto.tv_usec << endl;
+#endif
+
+			return syn_ack.seqNum;
 		}
 	}
 
-	return syn_ack.seqNum;
 }
 
 void TCP::receiveStartAck(msg_header_t syn_ack)
@@ -431,7 +441,7 @@ void TCP::receiveStartAck(msg_header_t syn_ack)
 	msg_packet_t packet;
 	int numbytes;
 
-	while(1){
+	while(true){
 		if ((numbytes = recvfrom(sockfd, (char *)&packet, sizeof(msg_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
 			perror("recvfrom");
 		}
@@ -458,7 +468,7 @@ int TCP::receiveEndFinAck()
 	fin.type = FIN_HEADER;
 	int seqNum = 1;
 
-	while(1){
+	while(true){
 		if((recvfrom(sockfd, (char *)&fin_ack, sizeof(msg_header_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1)
 			|| (fin_ack.type != FIN_ACK_HEADER)){
 			fin.seqNum = htonl(seqNum++);
@@ -478,7 +488,7 @@ void TCP::receiveEndAck(msg_header_t fin_ack)
 	ack_packet_t ack;
 	int numbytes;
 
-	while(1){
+	while(true){
 		if ((numbytes = recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
 			perror("recvfrom");
 		}

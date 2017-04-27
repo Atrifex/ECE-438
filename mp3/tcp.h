@@ -17,7 +17,6 @@ class TCP
         // Public Sender Member Functions
         void reliableSend(char * filename, unsigned long long int bytesToTransfer);
         void sendWindow();
-        void processAcks();
 
         // Public Receiver Member Functions
         void reliableReceive(char * filename);
@@ -25,7 +24,7 @@ class TCP
         // Private Sender Member Functions
         void senderSetupConnection();
         void senderTearDownConnection();
-        void manager();
+        void processAcks();
 
         // Private Receiver Memeber Functions
         bool receivePacket();
@@ -34,7 +33,7 @@ class TCP
 
         // Private Startup Handshake functions
         int receiveStartSyn();
-        int receiveStartSynAck();
+        int receiveStartSynAck(struct timeval synZeroTime);
         void receiveStartAck(msg_header_t syn_ack);
 
         // Private Teardown Handshake functions
@@ -56,12 +55,7 @@ class TCP
 
         // Round trip time and Retransmit time out
         struct timeval rtt, srtt, rto;
-        list<unsigned long long> history;
-
-        // Ack processing
-        mutex ackQLock;
-        condition_variable ackCV;
-        queue<ack_process_t> ackQ;
+        deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
 
         // Book keeping
         tcp_state_t state;
