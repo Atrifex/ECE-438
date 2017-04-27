@@ -58,9 +58,8 @@ class TCP
         struct timeval rto;
         double srtt;
         deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
-        unsigned long long runningTotal;
+        unsigned long long rttRunningTotal;
         unsigned long long numAcksTotal;
-        double meanRTT;
 
         // Book keeping
         tcp_state_t state;

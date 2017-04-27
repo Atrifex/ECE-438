@@ -29,7 +29,7 @@
 #define ALPHA               ((double)0.125)                  // (1/8) is goood, acts like a low-pass filter
 
 // RTO
-#define MAX_SRTT_WEIGHT    ((double)3.0)                     // good between 2 - 4  --> questions how much you can trust initial results
+#define MAX_SRTT_WEIGHT    ((double)4.0)                     // good between 2 - 4  --> questions how much you can trust initial results
 #define MIN_SRTT_WEIGHT    ((double)1.0)
 #define SRTT_SLOPE         ((MIN_SRTT_WEIGHT - MAX_SRTT_WEIGHT)/((double)(MAX_RTT_HISTORY)))
 

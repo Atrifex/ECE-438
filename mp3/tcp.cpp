@@ -92,6 +92,9 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	}
 
 	state = CLOSED;
+	srtt = 0.0;
+	rttRunningTotal = 0;
+	numAcksTotal = 0;
 }
 
 void TCP::senderSetupConnection()
@@ -206,8 +209,12 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 		rttHistory.push_back(rttSample);
 	}
 
-	// updated SRTT
-	srtt = (1.0 - ALPHA)*srrt + ALPHA*((double)rttSample);
+	// update running totals
+	rttRunningTotal += rttSample;
+	numAcksTotal++;
+
+	// update SRTT
+	srtt = (1.0 - ALPHA)*srtt + ALPHA*((double)rttSample);
 
 	// update RTO
 	rtoNext = srttWeight()*srtt + stdWeight()*stdDevRTT();
@@ -220,14 +227,20 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 		cout << "RTT in microseconds: " << rttHistory.back() << endl;
 		cout << "RTO in microseconds: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
 	#endif
-
-
 }
 
 
 double TCP::stdDevRTT()
 {
-	return  1.0;
+	double meanRTT = (1.0*(double)rttRunningTotal)/((double)numAcksTotal);
+
+	double sqrdMeanDiff = 0.0;
+	for(unsigned long long rttSample : rttHistory) {
+		sqrdMeanDiff += ((rttSample - meanRTT)*(rttSample - meanRTT));
+    }
+	sqrdMeanDiff = sqrdMeanDiff/(rttHistory.size());
+
+	return sqrt(sqrdMeanDiff);
 }
 
 inline double TCP::stdWeight(){
@@ -462,16 +475,17 @@ int TCP::receiveStartSynAck(struct timeval synZeroTime)
 			initialRTT = US_PER_SEC*(synAckTime.tv_sec - synTimeVec[synTimeIndex].tv_sec) +  synAckTime.tv_usec - synTimeVec[synTimeIndex].tv_usec;
 
 			// Assign RTO and same initialRTT
+			srtt = initialRTT;
 			rttHistory.push_back(initialRTT);
 			initialRTO = 2*initialRTT;
 			rto.tv_sec = initialRTO/US_PER_SEC;
 			rto.tv_usec = initialRTO%US_PER_SEC;
 
 #ifdef DEBUG
-			// cout << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
-			// cout << "Initial RTT in microseconds: " << rttHistory[0] << endl;
-			// cout << "Initial RTO secs: " << rto.tv_sec << endl;
-			// cout << "Initial RTO microseconds: " << rto.tv_usec << endl;
+			cout << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
+			cout << "Initial RTT in microseconds: " << rttHistory[0] << endl;
+			cout << "Initial RTO secs: " << rto.tv_sec << endl;
+			cout << "Initial RTO microseconds: " << rto.tv_usec << endl;
 #endif
 
 			return syn_ack.seqNum;

@@ -51,8 +51,10 @@
 #include <netdb.h>
 #include <list>
 #include <deque>
+#include <cmath>
 
 
+using std::sqrt;
 using std::thread;
 using std::ref;
 using std::list;
