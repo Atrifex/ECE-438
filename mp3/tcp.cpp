@@ -165,42 +165,45 @@ void TCP::senderTearDownConnection()
 
 void TCP::manager()
 {
-	ack_packet_t ack;
+	ack_process_t pACK;
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 
 	while(1){
 
-		if(recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-			
+		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
+
 			continue;
 		}else{
-			unique_lock<mutex> lk(ackQLock);
-			ackQ.push(ack);
-			lk.unlock();
-			ackCV.notify_one();
+			gettimeofday(&(pACK.time), 0);
+			{
+				unique_lock<mutex> lk(ackQLock);
+				ackQ.push(pACK);
+				lk.unlock();
+				ackCV.notify_one();
+			}
 		}
 	}
 }
 
 void TCP::processAcks()
 {
-	ack_packet_t ack;
+	ack_process_t pACK;
 
 	while(1){
 
 		{
 			unique_lock<mutex> lk(ackQLock);
 			ackCV.wait(lk, [&](){ return (!ackQ.empty()); });
-			ack = ackQ.front();
+			pACK = ackQ.front();
 			ackQ.pop();
 		}
 
-		ack.seqNum = ntohl(ack.seqNum);
+		pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
 
 		{
-			unique_lock<mutex> lkAck(buffer->pktLocks[(ack.seqNum) % buffer->data.size()]);
-			buffer->state[(ack.seqNum) % buffer->data.size()] = AVAILABLE;
+			unique_lock<mutex> lkAck(buffer->pktLocks[(pACK.ack.seqNum) % buffer->data.size()]);
+			buffer->state[(pACK.ack.seqNum) % buffer->data.size()] = AVAILABLE;
 			buffer->fillerCV.notify_one();
 		}
 
@@ -222,6 +225,10 @@ void TCP::sendWindow()
 
 			if(buffer->state[i] == FILLED){
 				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+
+				// record timestamp after sending
+				gettimeofday(&(buffer->timestamp[i]), 0);
+
 				buffer->state[i] = SENT;
 			}else if(buffer->state[i] == RETRANSMIT){
 				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);

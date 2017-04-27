@@ -61,7 +61,7 @@ class TCP
         // Ack processing
         mutex ackQLock;
         condition_variable ackCV;
-        queue<ack_packet_t> ackQ;
+        queue<ack_process_t> ackQ;
 
         // Book keeping
         tcp_state_t state;

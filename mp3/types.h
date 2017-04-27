@@ -99,6 +99,10 @@ typedef struct {
     uint32_t seqNum;
 } ack_packet_t;
 
+typedef struct {
+    ack_packet_t ack;
+    struct timeval time;
+} ack_process_t;
 
 typedef enum : uint8_t {
     /***** Sender States *****/

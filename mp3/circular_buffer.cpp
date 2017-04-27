@@ -37,8 +37,9 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     sourcefile.seekg (0, sourcefile.beg);
 
     state.resize(size, AVAILABLE);
-    data.resize(size);
+    timestamp.resize(size);
     length.resize(size);
+    data.resize(size);
 
     payload = PAYLOAD;
     seqNum = 0;

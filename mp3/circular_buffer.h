@@ -30,6 +30,7 @@ class CircularBuffer
         uint32_t seqNum;
 
         vector<packet_state_t> state;
+        vector<struct timeval> timestamp;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
 
