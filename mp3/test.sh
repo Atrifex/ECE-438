@@ -2,8 +2,9 @@
 usage(){
         echo "usage: ./test.sh [--help | -h]
         [--generate-random | -r]
-        [--generate-seq | -s]"
-                 
+        [--generate-seq | -s]
+        [--test-perfect-s | --tps]"
+
 }
 
 while [ ! $# -eq 0 ]
@@ -15,6 +16,14 @@ do
             ;;
         --generate-seq | -s)
             sh ./scripts/sequentialNumbers.sh $2 $3
+            exit
+            ;;
+        --test-perfect-s | --tps)
+            sh ./scripts/testPefectSender.sh $2
+            exit
+            ;;
+        --test-perfect-r | --tpr)
+            sh ./scripts/testPefectReceiver.sh $2
             exit
             ;;
     esac

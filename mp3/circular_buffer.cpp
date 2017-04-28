@@ -121,14 +121,7 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 void CircularBuffer::flush()
 {
     for(size_t i = 0; i < data.size(); i++) {
-        pktLocks[sIdx].lock();
         if(state[sIdx] == RECEIVED){
-
-            #ifdef DEBUG
-                cout << "Sent ACK for: " << data[sIdx].header.seqNum << endl;
-                // printf("sIdx: %d\n" , sIdx);
-                // printf("Packet Length: %u, SeqNum: %u\n" , length[sIdx], seqNum);
-            #endif
             // write to file
             destfile.write(data[sIdx].msg, length[sIdx]);
             destfile.flush();
@@ -137,15 +130,9 @@ void CircularBuffer::flush()
             state[sIdx] = WAITING;
             sIdx = (sIdx+1)%data.size();
         } else{
-            pktLocks[sIdx].unlock();
             return;
         }
-        pktLocks[sIdx].unlock();
     }
-}
-
-void bufferFlusher(CircularBuffer & buffer) {
-    buffer.flush();
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -156,10 +143,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 
     packet.header.seqNum = ntohl(packet.header.seqNum);
 
-    cout << "Message seen: " <<  packet.header.seqNum << endl;
-    // drop packet if the seqNum is smaller than expected.
     if(packet.header.seqNum < seqNum){
-        cout << "DUPLICATE ACK for: " <<  seqNum - 1 << endl;
         // send ACK the previous message
         ack.seqNum = htonl(seqNum - 1);
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
@@ -172,19 +156,11 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     }
 
     size_t bufIdx = packet.header.seqNum % data.size();
-    pktLocks[bufIdx].lock();
     if(state[bufIdx] == WAITING){
         state[bufIdx] = RECEIVED;
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
-
-#ifdef DEBUG
-        // printf("\nReceived seqNum: %d\n", packet.header.seqNum);
-        // printf("Index Store: %lu, RECEIVED length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
-#endif
-
     }
-    pktLocks[bufIdx].unlock();
 
-    thread flusher(bufferFlusher, ref(*this)); flusher.detach();
+    flush();
 }
