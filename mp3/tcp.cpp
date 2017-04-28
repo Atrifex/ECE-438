@@ -100,8 +100,10 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	numAcksTotal = 0;
 	alpha = ALPHA;
 
-	sfile.open("sendLog", std::ios::out);
-	afile.open("ackLog", std::ios::out);
+	#ifdef DEBUG
+		sfile.open("sendLog", std::ios::out);
+		afile.open("ackLog", std::ios::out);
+	#endif
 
 }
 
@@ -177,8 +179,6 @@ void TCP::ackManager()
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 
-	numRetransmissions = 0;
-
 	while(true){
 		// Transmission completed
 		if(expectedSeqNum >= buffer->seqNum && buffer->fileLoadCompleted == true){
@@ -189,12 +189,14 @@ void TCP::ackManager()
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			// processTO();
-			cout << "\n\nTHIS HAPPENED! \n\n";
 			continue;
 		}
 
 		//process ack if received
 		processAcks(pACK);
+
+		// decrease the effect of numRetransmissions as quickly as possible ... but not too quickly
+		numRetransmissions = numRetransmissions/2;
 	}
 }
 
@@ -207,17 +209,16 @@ void TCP::processAcks(ack_process_t & pACK)
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
 
 	#ifdef DEBUG
-		afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		afile.flush();
+		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		// afile.flush();
 	#endif
 
 	if(expectedSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
 	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
-		// duplicate ACK
 		#ifdef DEBUG
-			afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-			afile.flush();
+			// afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
+			// afile.flush();
 		#endif
 	}else if(expectedSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
@@ -261,8 +262,8 @@ void TCP::processTO()
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
 			#ifdef DEBUG
-				// afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
-				// afile.flush();
+				afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
+				afile.flush();
 			#endif
 
 			// TODO: Decide what to do what RTT for retransmitted packet
@@ -270,7 +271,7 @@ void TCP::processTO()
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 
 			if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) != -1){
-				;
+				processAcks(pACK);
 				return;
 			}
 		}
@@ -366,9 +367,6 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 	rtoNext = min(rtoNext, (double)MAX_RTO);
 	rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
 	rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
-
-	// decrease the effect of numRetransmissions as quickly as possible ... but not too quickly
-	numRetransmissions = numRetransmissions/2;
 
 	#ifdef DEBUG
 		// afile << "SRTT weight: " << srttWeight() << endl;

@@ -59,7 +59,9 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 
     gettimeofday(&start, 0);
 
-    ffile.open("fillLog", std::ios::out);
+    #ifdef DEBUG
+        ffile.open("fillLog", std::ios::out);
+    #endif
 
 }
 
