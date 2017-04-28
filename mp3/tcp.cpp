@@ -230,6 +230,8 @@ void TCP::processAcks()
 			buffer->fillerCV.notify_one();
 		}
 
+		expectedSeqNum++;
+
 		updateTimingConstraints(rttSample);
 	}
 }
