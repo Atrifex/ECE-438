@@ -40,9 +40,11 @@ class TCP
         void receiveEndAck(msg_header_t fin_ack);
 
         // ACK Processing
-        void processAcks();
-        unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceived);
-        unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceived);
+        void ackManager();
+        void processAcks(ack_process_t & pACK);
+        void processTO();
+        unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
+        unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
 
 
         // RTT function

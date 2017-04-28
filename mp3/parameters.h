@@ -23,7 +23,7 @@
 // Timing Information
 #define START_TIME_VEC_SIZE         (100)
 #define US_PER_SEC                  (1000000)
-
+#define RETRANS_CHECK_TIME          (100)       // 50 microseconds
 
 // RTT
 #define MAX_RTT_HISTORY             (100)
