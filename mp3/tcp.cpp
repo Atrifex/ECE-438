@@ -181,13 +181,31 @@ void TCP::processAcks()
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			#ifdef DEBUG
-				cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
+				// cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
 			#endif
 
-			// process time outs
+			bufferIdx = (expectedSeqNum % buffer->data.size());
+
+			// Notify sender to send expected ACK
+
+			int j = bufferIdx;
+			for(unsigned int i = 0; i < buffer->data.size(); i++) {
+				unique_lock<mutex> lkTO(buffer->pktLocks[j]);
+				#ifdef DEBUG
+					// cout << "Index: " << j << ", Need to Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
+					// cout.flush();
+				#endif
+				if(buffer->state[j] == SENT){
+					buffer->state[j] = RETRANSMIT;
+					lkTO.unlock();
+					buffer->senderCV.notify_one();
+				}
+				j = (j + 1) % buffer->data.size();
+	        }
 
 			// recalculate timing constraints
 			numRetransmissions++;
+			cout << "NUMBER RETRANSMIT: " << numRetransmissions << endl;
 			rttHistory.erase(rttHistory.begin(), rttHistory.begin() + min((size_t)(numRetransmissions*DROP_HIST_WEIGHT), rttHistory.size() - 1));
 
 			// Update RT
@@ -247,8 +265,9 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 	#ifdef DEBUG
 		// cout << "SRTT weight: " << srttWeight() << endl;
 		// cout << "STD weight: " << stdWeight()  << endl << endl;
-		cout << "RTT in microseconds: " << rttHistory.back() << endl;
-		cout << "RTO in microseconds: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
+		// cout << "History Size: " << rttHistory.size() << endl;
+		// cout << "RTT in microseconds: " << rttHistory.back() << endl;
+		// cout << "RTO in microseconds: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl;
 	#endif
 }
 
@@ -279,6 +298,7 @@ void TCP::sendWindow()
 {
 	while(state == ESTABLISHED){
 		int bufferSize = buffer->data.size();
+		// i = sIdx; i != endindex; i += i % bufferSize
 		for(int i = 0; i < bufferSize; i++) {
 			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
 			buffer->senderCV.wait(lkSend, [=]{
@@ -286,7 +306,7 @@ void TCP::sendWindow()
 			});
 
 			#ifdef DEBUG
-				// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
+				cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
 			#endif
 
 			if(buffer->state[i] == FILLED){
@@ -306,12 +326,17 @@ void TCP::sendWindow()
 				for(int k = 0; k < bufferSize; k++){
 					if(buffer->state[j] == RETRANSMIT){
 						unique_lock<mutex> lkRetrans(buffer->pktLocks[j]);
+						#ifdef DEBUG
+							cout << "RETRANSMITing packet for: " << ntohl(buffer->data[j].header.seqNum) << endl;
+							cout.flush();
+						#endif
 						sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 						buffer->state[i] = SENT;
 					}
 					j = (j + 1) % bufferSize;
 				}
 				// Retransmission so can't move forward
+				cout << endl << endl;
 				i--;
 			}
 		}

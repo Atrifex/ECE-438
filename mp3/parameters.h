@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-#define SWS                         (1)
+#define SWS                         (16)
 #define RWS                         (SWS)
 #define MAX_WINDOW_SIZE             (256)
 
