@@ -40,7 +40,6 @@ class CircularBuffer
         condition_variable fillerCV;
 
         unsigned long long int bytesToTransfer;
-    private:
         ifstream sourcefile;
         ofstream destfile;
 };

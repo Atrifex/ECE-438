@@ -91,10 +91,14 @@ TCP::TCP(char * hostname, char * hostUDPport)
 		exit(3);
 	}
 
+	// Book keeping
+	expectedSeqNum = 0;
+	numRetransmissions = 0;
 	state = CLOSED;
 	srtt = 0.0;
 	rttRunningTotal = 0;
 	numAcksTotal = 0;
+	alpha = ALPHA;
 }
 
 void TCP::senderSetupConnection()
@@ -171,11 +175,25 @@ void TCP::processAcks()
 	int bufferIdx;
 	unsigned long long rttSample;
 
+	numRetransmissions = 0;
+
 	while(true){
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
+			#ifdef DEBUG
+				cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
+			#endif
+
 			// process time outs
-			cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
+
+			// recalculate timing constraints
+			numRetransmissions++;
+			rttHistory.erase(rttHistory.begin(), rttHistory.begin() + min((size_t)(numRetransmissions*DROP_HIST_WEIGHT), rttHistory.size() - 1));
+
+			// Update RT
+			rtoNext = min(1.5*rtoNext, (double)MAX_RTO);
+			rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
+			rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
 			continue;
 		}
 
@@ -183,6 +201,7 @@ void TCP::processAcks()
 		pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
 		bufferIdx = (pACK.ack.seqNum % buffer->data.size());
 
+		// process expected ACK
 		{
 			unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
 			buffer->state[bufferIdx] = AVAILABLE;
@@ -199,7 +218,6 @@ void TCP::processAcks()
 
 void TCP::updateTimingConstraints(unsigned long long rttSample)
 {
-	double rtoNext;
 	if(rttHistory.size() >= MAX_RTT_HISTORY){
 		// once we have hit the max history, start dorping values
 		rttHistory.pop_front();
@@ -214,12 +232,17 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 	numAcksTotal++;
 
 	// update SRTT
-	srtt = (1.0 - ALPHA)*srtt + ALPHA*((double)rttSample);
+	alpha = min(ALPHA_TO_SCALAR*numRetransmissions + ALPHA, ALPHA_MAX);
+	srtt = (1.0 - alpha)*srtt + alpha*((double)rttSample);
 
 	// update RTO
 	rtoNext = srttWeight()*srtt + stdWeight()*stdDevRTT();
+	rtoNext = min(rtoNext, (double)MAX_RTO);
 	rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
 	rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
+
+	// decrease the effect of numRetransmissions as quickly as possible ... but not too quickly
+	numRetransmissions = numRetransmissions/2;
 
 	#ifdef DEBUG
 		// cout << "SRTT weight: " << srttWeight() << endl;
@@ -262,9 +285,9 @@ void TCP::sendWindow()
 				return (buffer->state[i] == FILLED || buffer->state[i] == RETRANSMIT);
 			});
 
-#ifdef DEBUG
-			// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
-#endif
+			#ifdef DEBUG
+				// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
+			#endif
 
 			if(buffer->state[i] == FILLED){
 				// record timestamp before sending
@@ -481,12 +504,12 @@ int TCP::receiveStartSynAck(struct timeval synZeroTime)
 			rto.tv_sec = initialRTO/US_PER_SEC;
 			rto.tv_usec = initialRTO%US_PER_SEC;
 
-#ifdef DEBUG
-			cout << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
-			cout << "Initial RTT in microseconds: " << rttHistory[0] << endl;
-			cout << "Initial RTO secs: " << rto.tv_sec << endl;
-			cout << "Initial RTO microseconds: " << rto.tv_usec << endl;
-#endif
+			#ifdef DEBUG
+				// cout << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
+				// cout << "Initial RTT in microseconds: " << rttHistory[0] << endl;
+				// cout << "Initial RTO secs: " << rto.tv_sec << endl;
+				// cout << "Initial RTO microseconds: " << rto.tv_usec << endl;
+			#endif
 
 			return syn_ack.seqNum;
 		}
@@ -546,17 +569,19 @@ void TCP::receiveEndAck(msg_header_t fin_ack)
 	struct sockaddr theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
 	ack_packet_t ack;
-	int numbytes;
+
+	rto.tv_sec = FIN_TO;
+	rto.tv_usec = 0;
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
+
+	state = TIME_WAIT;
 
 	while(true){
-		if ((numbytes = recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1) {
-			perror("recvfrom");
-		}
-
-		// write message into buffer if ACK lost and message seen first
-		if(ack.type == ACK_HEADER){
+		if (((recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1)
+			|| ack.type == ACK_HEADER){
 			break;
-		} else{
+		}else{
+			// If fin_ack, lost then resend
 			sendto(sockfd, (char *)&fin_ack, sizeof(msg_header_t), 0, &theirAddr, theirAddrLen);
 		}
 	}

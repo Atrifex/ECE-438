@@ -32,10 +32,6 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
         exit(1);
     }
 
-    sourcefile.seekg (0, sourcefile.end);
-    int fileLength = sourcefile.tellg();
-    sourcefile.seekg (0, sourcefile.beg);
-
     state.resize(size, AVAILABLE);
     timestamp.resize(size);
     length.resize(size);
@@ -44,7 +40,17 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     payload = PAYLOAD;
     seqNum = 0;
     sIdx = 0;
+
+#ifdef FILE_CHECK
+    sourcefile.seekg (0, sourcefile.end);
+    int fileLength = sourcefile.tellg();
+    sourcefile.seekg (0, sourcefile.beg);
     bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
+#else
+    bytesToTransfer = bytesToSend;
+#endif
+
+
 }
 
 void CircularBuffer::fill()

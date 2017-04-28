@@ -56,13 +56,17 @@ class TCP
 
         // Round trip time and Retransmit time out
         struct timeval rto;
+        double rtoNext;
         double srtt;
         deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
         unsigned long long rttRunningTotal;
         unsigned long long numAcksTotal;
+        double alpha;
 
         // Book keeping
         tcp_state_t state;
+        uint32_t expectedSeqNum;
+        int numRetransmissions;
 };
 
 
