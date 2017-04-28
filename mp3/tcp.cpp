@@ -188,7 +188,7 @@ void TCP::ackManager()
 		// Wait for ack
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
-			// processTO();
+			processTO();
 			continue;
 		}
 
@@ -199,34 +199,6 @@ void TCP::ackManager()
 		numRetransmissions = numRetransmissions/2;
 	}
 }
-
-void TCP::processAcks(ack_process_t & pACK)
-{
-	unsigned long long rttSample;
-
-	gettimeofday(&(pACK.time), 0);
-	pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
-	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
-
-	#ifdef DEBUG
-		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		// afile.flush();
-	#endif
-
-	if(expectedSeqNum == pACK.ack.seqNum){
-		rttSample = processExpecAck(pACK, ackReceivedIdx);
-	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
-		#ifdef DEBUG
-			// afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-			// afile.flush();
-		#endif
-	}else if(expectedSeqNum < pACK.ack.seqNum){
-		rttSample = processOoOAck(pACK, ackReceivedIdx);
-	}
-
-	updateTimingConstraints(rttSample);
-}
-
 
 void TCP::processTO()
 {
@@ -271,15 +243,42 @@ void TCP::processTO()
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 
 			if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) != -1){
-				processAcks(pACK);
 				lkTO.unlock();
+				processAcks(pACK);
 				return;
 			}
 		}
 		j = (j + 1) % buffer->data.size();
 	}
+	cout << "Returning from function\n";
 }
 
+void TCP::processAcks(ack_process_t & pACK)
+{
+	unsigned long long rttSample;
+
+	gettimeofday(&(pACK.time), 0);
+	pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
+	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
+
+	#ifdef DEBUG
+		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		// afile.flush();
+	#endif
+
+	if(expectedSeqNum == pACK.ack.seqNum){
+		rttSample = processExpecAck(pACK, ackReceivedIdx);
+	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
+		#ifdef DEBUG
+			// afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
+			// afile.flush();
+		#endif
+	}else if(expectedSeqNum < pACK.ack.seqNum){
+		rttSample = processOoOAck(pACK, ackReceivedIdx);
+	}
+
+	updateTimingConstraints(rttSample);
+}
 
 unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
 {

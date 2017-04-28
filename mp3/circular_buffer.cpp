@@ -118,24 +118,11 @@ CircularBuffer::CircularBuffer(int size, char * filename)
     sIdx = 0;
 }
 
-void sendAck(uint32_t seqNum){
-    // Set up ack packet
-    ack_packet_t ack;
-    ack.type = ACK_HEADER;
-    ack.seqNum = htonl(seqNum);
-
-    // send ack
-    sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
-}
-
 void CircularBuffer::flush()
 {
     for(size_t i = 0; i < data.size(); i++) {
         pktLocks[sIdx].lock();
         if(state[sIdx] == RECEIVED){
-
-            thread acker(sendAck, data[sIdx].header.seqNum);
-            acker.detach();
 
             #ifdef DEBUG
                 cout << "Sent ACK for: " << data[sIdx].header.seqNum << endl;
@@ -148,9 +135,6 @@ void CircularBuffer::flush()
 
             // book keeping
             state[sIdx] = WAITING;
-            seqNumLock.lock();
-            seqNum++;
-            seqNumLock.unlock();
             sIdx = (sIdx+1)%data.size();
         } else{
             pktLocks[sIdx].unlock();
@@ -166,18 +150,25 @@ void bufferFlusher(CircularBuffer & buffer) {
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
 {
+    // Set up ack packet
+    ack_packet_t ack;
+    ack.type = ACK_HEADER;
+
     packet.header.seqNum = ntohl(packet.header.seqNum);
 
-    seqNumLock.lock();
-    uint32_t seqNumExpected = seqNum;
-    seqNumLock.unlock();
-
+    cout << "Message seen: " <<  packet.header.seqNum << endl;
     // drop packet if the seqNum is smaller than expected.
-    if(packet.header.seqNum < seqNumExpected){
-        // ack the previous message
-        cout << "DUPLICATE ACK for: " <<  seqNumExpected - 1 << endl;
-        thread acker(sendAck, seqNumExpected - 1); acker.detach();
+    if(packet.header.seqNum < seqNum){
+        cout << "DUPLICATE ACK for: " <<  seqNum - 1 << endl;
+        // send ACK the previous message
+        ack.seqNum = htonl(seqNum - 1);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         return;
+    }else{
+        // send ACK for expected message
+        ack.seqNum = htonl(seqNum);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+        seqNum++;
     }
 
     size_t bufIdx = packet.header.seqNum % data.size();
@@ -195,6 +186,5 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     }
     pktLocks[bufIdx].unlock();
 
-    thread flusher(bufferFlusher, ref(*this));
-    flusher.detach();
+    thread flusher(bufferFlusher, ref(*this)); flusher.detach();
 }
