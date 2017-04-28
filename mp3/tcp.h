@@ -24,7 +24,6 @@ class TCP
         // Private Sender Member Functions
         void senderSetupConnection();
         void senderTearDownConnection();
-        void processAcks();
 
         // Private Receiver Memeber Functions
         bool receivePacket();
@@ -39,6 +38,12 @@ class TCP
         // Private Teardown Handshake functions
         int receiveEndFinAck();
         void receiveEndAck(msg_header_t fin_ack);
+
+        // ACK Processing
+        void processAcks();
+        unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceived);
+        unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceived);
+
 
         // RTT function
         void updateTimingConstraints(unsigned long long rttSample);

@@ -138,13 +138,9 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	state = ESTABLISHED;
 
 	// send data
-	thread bufferHandler(bufferFiller, ref(*(this->buffer)));
-	thread sendHandler(packetSender, ref(*(this)));
+	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
+	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
 	processAcks();
-
-	// clean up threads
-	std::terminate(bufferHandler);
-	std::terminate(sendHandler);
 
 	state = CLOSING;
 
@@ -180,7 +176,7 @@ void TCP::processAcks()
 	ack_process_t pACK;
 	struct sockaddr_storage theirAddr;
 	socklen_t theirAddrLen = sizeof(theirAddr);
-	unsigned int bufferIdx;
+	uint32_t bufferIdx;
 	unsigned long long rttSample;
 
 	numRetransmissions = 0;
@@ -235,21 +231,8 @@ void TCP::processAcks()
 			afile.flush();
 		#endif
 
-		if(expectedSeqNum == pACK.ack.seqNum){
-			// expected ACK
-			unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
-			buffer->state[bufferIdx] = AVAILABLE;
-
-			rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec;
-
-			#ifdef DEBUG
-				afile << "ACK in-order: " << ntohl(buffer->data[bufferIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-				afile.flush();
-			#endif
-
-			lkAck.unlock();
-			buffer->fillerCV.notify_one();
-			expectedSeqNum = pACK.ack.seqNum + 1;
+		if(expectedSeqNum == pACK.ack.seqNum){ // expected ACK
+			rttSample = processExpecAck(pACK, bufferIdx);
 		}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
 			// duplicate ACK
 			#ifdef DEBUG
@@ -257,44 +240,75 @@ void TCP::processAcks()
 				afile.flush();
 			#endif
 			continue;
-		}else if(expectedSeqNum < pACK.ack.seqNum){
-			// Out of order ACK
-
-			// Handling missing acks based on cumulative out of order ACK
-	        for(unsigned int i = (expectedSeqNum % buffer->data.size()); i != (bufferIdx); i = ((i + 1) % buffer->data.size())) {
-				unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
-
-				#ifdef DEBUG
-					afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-					afile.flush();
-				#endif
-				if(buffer->state[i] == SENT){
-					buffer->state[i] = AVAILABLE;
-				}
-				lkOoO.unlock();
-				buffer->fillerCV.notify_one();
-            }
-
-	        {  // handling acked message
-	          unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
-	          buffer->state[bufferIdx] = AVAILABLE;
-
-			  #ifdef DEBUG
-	          	afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-				afile.flush();
-			  #endif
-
-			  rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec;
-	          lkAck.unlock();
-	          buffer->fillerCV.notify_one();
-	        }
-			expectedSeqNum = pACK.ack.seqNum + 1;
+		}else if(expectedSeqNum < pACK.ack.seqNum){ // Out of order ACK
+			rttSample = processOoOAck(pACK, bufferIdx);
 		}
 
 
 		updateTimingConstraints(rttSample);
 	}
 }
+unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackReceived)
+{
+	unsigned long long rttSample;
+
+	unique_lock<mutex> lkAck(buffer->pktLocks[ackReceived]);
+	buffer->state[ackReceived] = AVAILABLE;
+
+	rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceived].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceived].tv_usec;
+
+	#ifdef DEBUG
+		afile << "ACK in-order: " << ntohl(buffer->data[ackReceived].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
+	#endif
+
+	lkAck.unlock();
+	buffer->fillerCV.notify_one();
+	expectedSeqNum = pACK.ack.seqNum + 1;
+
+	return rttSample;
+}
+
+unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceived)
+{
+	unsigned long long rttSample;
+
+	// Handling missing acks based on cumulative out of order ACK
+	for(unsigned int i = (expectedSeqNum % buffer->data.size()); i != (ackReceived); i = ((i + 1) % buffer->data.size())){
+		unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
+
+		#ifdef DEBUG
+			afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+			afile.flush();
+		#endif
+
+		if(buffer->state[i] == SENT){
+			buffer->state[i] = AVAILABLE;
+		}
+
+		lkOoO.unlock();
+		buffer->fillerCV.notify_one();
+	}
+
+	{  // handling acked message
+	  unique_lock<mutex> lkAck(buffer->pktLocks[ackReceived]);
+	  buffer->state[ackReceived] = AVAILABLE;
+
+	  #ifdef DEBUG
+		afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
+	  #endif
+
+	  rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceived].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceived].tv_usec;
+	  lkAck.unlock();
+	  buffer->fillerCV.notify_one();
+	}
+
+	expectedSeqNum = pACK.ack.seqNum + 1;
+
+	return rttSample;
+}
+
 
 void TCP::updateTimingConstraints(unsigned long long rttSample)
 {
