@@ -138,9 +138,13 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 	state = ESTABLISHED;
 
 	// send data
-	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
-	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
+	thread bufferHandler(bufferFiller, ref(*(this->buffer)));
+	thread sendHandler(packetSender, ref(*(this)));
 	processAcks();
+
+	// clean up threads
+	std::terminate(bufferHandler);
+	std::terminate(sendHandler);
 
 	state = CLOSING;
 
@@ -182,13 +186,17 @@ void TCP::processAcks()
 	numRetransmissions = 0;
 
 	while(true){
+		if(expectedSeqNum >= buffer->seqNum && buffer->fileLoadCompleted == true){
+			return;
+		}
+
 		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			#ifdef DEBUG
-				// afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
-				// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
-				// afile << "EXPECTED: " << expectedSeqNum << endl;
-				// afile.flush();
+				// cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
+				// cout << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
+				// cout << "EXPECTED: " << expectedSeqNum << endl;
+				// cout.flush();
 			#endif
 
 			// // Notify sender to send expected messages again

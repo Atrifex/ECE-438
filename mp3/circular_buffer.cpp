@@ -47,14 +47,14 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     payload = PAYLOAD;
     seqNum = 0;
     sIdx = 0;
+    fileLoadCompleted = false;
+    bytesToTransfer = bytesToSend;
 
 #ifdef FILE_CHECK
     sourcefile.seekg (0, sourcefile.end);
     int fileLength = sourcefile.tellg();
     sourcefile.seekg (0, sourcefile.beg);
     bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
-#else
-    bytesToTransfer = bytesToSend;
 #endif
 
     gettimeofday(&start, 0);
@@ -69,6 +69,7 @@ void CircularBuffer::fill()
         int bufferSize = data.size();
         for(int i = 0; i < bufferSize; i++) {
             if(bytesToTransfer <= 0){
+                fileLoadCompleted = true;
                 return;
             }
 

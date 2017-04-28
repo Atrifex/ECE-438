@@ -26,20 +26,22 @@ class CircularBuffer
         int sIdx;
         unsigned int payload;
 
+        // seqNum
         mutex seqNumLock;
         uint32_t seqNum;
 
+        // data
         vector<packet_state_t> state;
         vector<struct timeval> timestamp;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
-
-
         mutex pktLocks[MAX_WINDOW_SIZE];
         condition_variable senderCV;
         condition_variable fillerCV;
 
+        // Meta data
         unsigned long long int bytesToTransfer;
+        bool fileLoadCompleted;
         ifstream sourcefile;
         ofstream destfile;
 
