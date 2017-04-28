@@ -182,20 +182,19 @@ void TCP::processAcks()
 		if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) == -1){
 			#ifdef DEBUG
 				// cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << endl << endl;
+				cout << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
+				cout << "EXPECTED: " << expectedSeqNum << endl;
 			#endif
 
-			bufferIdx = (expectedSeqNum % buffer->data.size());
-
-			// Notify sender to send expected ACK
-
-			int j = bufferIdx;
+			// Notify sender to send expected messages again
+			int j = (expectedSeqNum % buffer->data.size());
 			for(unsigned int i = 0; i < buffer->data.size(); i++) {
 				unique_lock<mutex> lkTO(buffer->pktLocks[j]);
-				#ifdef DEBUG
-					// cout << "Index: " << j << ", Need to Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
-					// cout.flush();
-				#endif
 				if(buffer->state[j] == SENT){
+					#ifdef DEBUG
+						cout << "Index: " << j << ", Need to Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
+						cout.flush();
+					#endif
 					buffer->state[j] = RETRANSMIT;
 					lkTO.unlock();
 					buffer->senderCV.notify_one();
@@ -205,7 +204,6 @@ void TCP::processAcks()
 
 			// recalculate timing constraints
 			numRetransmissions++;
-			cout << "NUMBER RETRANSMIT: " << numRetransmissions << endl;
 			rttHistory.erase(rttHistory.begin(), rttHistory.begin() + min((size_t)(numRetransmissions*DROP_HIST_WEIGHT), rttHistory.size() - 1));
 
 			// Update RT
@@ -219,8 +217,12 @@ void TCP::processAcks()
 		pACK.ack.seqNum = ntohl(pACK.ack.seqNum);
 		bufferIdx = (pACK.ack.seqNum % buffer->data.size());
 
-		// process expected ACK
-		{
+		#ifdef DEBUG
+			cout << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << endl;
+		#endif
+
+		if(expectedSeqNum == pACK.ack.seqNum){
+			// expected ACK
 			unique_lock<mutex> lkAck(buffer->pktLocks[bufferIdx]);
 			buffer->state[bufferIdx] = AVAILABLE;
 
@@ -228,9 +230,24 @@ void TCP::processAcks()
 
 			lkAck.unlock();
 			buffer->fillerCV.notify_one();
+			expectedSeqNum++;
+		}else if(expectedSeqNum < pACK.ack.seqNum){
+			// Out of order ACK
+			for(unsigned int i = (expectedSeqNum % buffer->data.size()); i != (pACK.ack.seqNum % buffer->data.size()); i = ((i + 1) % buffer->data.size())) {
+				unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
+				if(buffer->state[i] == SENT){
+					buffer->state[i] = AVAILABLE;
+					lkOoO.unlock();
+					buffer->fillerCV.notify_one();
+				}
+	        }
+			rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[bufferIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[bufferIdx].tv_usec;
+			expectedSeqNum = pACK.ack.seqNum + 1;
+		}else{
+			// duplicate ACK
+			continue;
 		}
 
-		expectedSeqNum++;
 
 		updateTimingConstraints(rttSample);
 	}
@@ -308,7 +325,7 @@ void TCP::sendWindow()
 			});
 
 			#ifdef DEBUG
-				cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
+				// cout << "Sending packet for: " << ntohl(buffer->data[i].header.seqNum) << endl;
 			#endif
 
 			if(buffer->state[i] == FILLED){
@@ -329,8 +346,8 @@ void TCP::sendWindow()
 					if(buffer->state[j] == RETRANSMIT){
 						unique_lock<mutex> lkRetrans(buffer->pktLocks[j]);
 						#ifdef DEBUG
-							cout << "RETRANSMITing packet for: " << ntohl(buffer->data[j].header.seqNum) << endl;
-							cout.flush();
+							// cout << "RETRANSMITing packet for: " << ntohl(buffer->data[j].header.seqNum) << endl;
+							// cout.flush();
 						#endif
 						sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 						buffer->state[i] = SENT;
@@ -338,7 +355,6 @@ void TCP::sendWindow()
 					j = (j + 1) % bufferSize;
 				}
 				// Retransmission so can't move forward
-				cout << endl << endl;
 				i--;
 			}
 		}

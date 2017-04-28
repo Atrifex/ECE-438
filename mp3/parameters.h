@@ -27,7 +27,7 @@
 
 // RTT
 #define MAX_RTT_HISTORY             (100)
-#define DROP_HIST_WEIGHT            (10)                              // drop a multiple of 10 things everytime there is a timeout
+#define DROP_HIST_WEIGHT            (5)                               // drop a multiple of 10 things everytime there is a timeout
 
 // SRTT
 #define ALPHA                       ((double)0.125)                   // (1/8) is goood, acts like a low-pass filter
@@ -35,7 +35,7 @@
 #define ALPHA_MAX                   ((double)0.75)
 
 // RTO
-#define MAX_SRTT_WEIGHT             ((double)4.0)                     // good between 2 - 4  --> questions how much you can trust initial results
+#define MAX_SRTT_WEIGHT             ((double)5.0)                     // good between 2 - 4  --> questions how much you can trust initial results
 #define MIN_SRTT_WEIGHT             ((double)1.0)
 #define SRTT_SLOPE                  ((MIN_SRTT_WEIGHT - MAX_SRTT_WEIGHT)/((double)(MAX_RTT_HISTORY)))
 
