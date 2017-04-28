@@ -231,7 +231,7 @@ void TCP::processAcks()
 			afile.flush();
 		#endif
 
-		if(expectedSeqNum == pACK.ack.seqNum){ // expected ACK
+		if(expectedSeqNum == pACK.ack.seqNum){ 			// expected ACK
 			rttSample = processExpecAck(pACK, bufferIdx);
 		}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
 			// duplicate ACK
@@ -240,7 +240,7 @@ void TCP::processAcks()
 				afile.flush();
 			#endif
 			continue;
-		}else if(expectedSeqNum < pACK.ack.seqNum){ // Out of order ACK
+		}else if(expectedSeqNum < pACK.ack.seqNum){ 	// Out of order ACK
 			rttSample = processOoOAck(pACK, bufferIdx);
 		}
 
