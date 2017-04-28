@@ -262,7 +262,7 @@ void TCP::processTO()
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
 			#ifdef DEBUG
-				afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << endl;
+				afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
 				afile.flush();
 			#endif
 
@@ -272,40 +272,12 @@ void TCP::processTO()
 
 			if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) != -1){
 				processAcks(pACK);
+				lkTO.unlock();
 				return;
 			}
 		}
 		j = (j + 1) % buffer->data.size();
 	}
-
-	// else if(buffer->state[i] == RETRANSMIT){
-	// 	sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
-	// 	buffer->state[i] = SENT;
-	//
-	// 	#ifdef DEBUG
-	// 		sfile << "RETRANSMITing packet for: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-	// 		sfile.flush();
-	// 	#endif
-	//
-	// 	// drop lock asap
-	// 	lkSend.unlock();
-	//
-	// 	uint j = (i + 1) % bufferSize;
-	// 	for(int k = 0; k < bufferSize; k++){
-	// 		if(buffer->state[j] == RETRANSMIT){
-	// 			unique_lock<mutex> lkRetrans(buffer->pktLocks[j]);
-	// 			#ifdef DEBUG
-	// 				sfile << "RETRANSMITing packet for: " << ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-	// 				sfile.flush();
-	// 			#endif
-	// 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
-	// 			buffer->state[i] = SENT;
-	// 		}
-	// 		j = (j + 1) % bufferSize;
-	// 	}
-	// 	// Retransmission so can't move forward
-	// 	i--;
-	// }
 }
 
 
