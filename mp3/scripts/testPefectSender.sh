@@ -7,6 +7,5 @@ do
     echo "."
     echo "."
     ./reliable_sender 192.168.0.2 4950 sourcefile 13123123123123
-    diff destfile sourcefile
     echo ""
 done
