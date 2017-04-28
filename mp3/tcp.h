@@ -67,6 +67,9 @@ class TCP
         tcp_state_t state;
         uint32_t expectedSeqNum;
         int numRetransmissions;
+
+        // degbuging
+        ofstream sfile, afile;
 };
 
 

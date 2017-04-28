@@ -22,6 +22,13 @@ void CircularBuffer::setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, s
     ackAddrLen = senderAddrLen;
 }
 
+unsigned long long CircularBuffer::timeSinceStart()
+{
+    struct timeval curTime;
+    gettimeofday(&curTime, 0);
+
+    return US_PER_SEC*(curTime.tv_sec - start.tv_sec) + curTime.tv_usec - start.tv_usec;
+}
 
 /*************** Send Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int bytesToSend)
@@ -50,6 +57,9 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = bytesToSend;
 #endif
 
+    gettimeofday(&start, 0);
+
+    ffile.open("fillLog", std::ios::out);
 
 }
 
@@ -67,9 +77,9 @@ void CircularBuffer::fill()
 
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
-#ifdef DEBUG
-            //cout << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << endl;
-#endif
+            #ifdef DEBUG
+                ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
+            #endif
             // initialize header
             data[i].header.type = DATA_HEADER;
             data[i].header.seqNum = htonl(seqNum++);
@@ -105,7 +115,7 @@ CircularBuffer::CircularBuffer(int size, char * filename)
     sIdx = 0;
 }
 
-void sendAck(int seqNum){
+void sendAck(uint32_t seqNum){
     // Set up ack packet
     ack_packet_t ack;
     ack.type = ACK_HEADER;
@@ -124,10 +134,11 @@ void CircularBuffer::flush()
             thread acker(sendAck, data[sIdx].header.seqNum);
             acker.detach();
 
-#ifdef DEBUG
-            printf("sIdx: %d\n" , sIdx);
-            printf("Packet Length: %u, SeqNum: %u\n" , length[sIdx], seqNum);
-#endif
+            #ifdef DEBUG
+                cout << "Sent ACK for: " << data[sIdx].header.seqNum << endl;
+                // printf("sIdx: %d\n" , sIdx);
+                // printf("Packet Length: %u, SeqNum: %u\n" , length[sIdx], seqNum);
+            #endif
             // write to file
             destfile.write(data[sIdx].msg, length[sIdx]);
             destfile.flush();
@@ -154,13 +165,17 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 {
     packet.header.seqNum = ntohl(packet.header.seqNum);
 
-    // drop packet if the seqNum is smaller than expected.
     seqNumLock.lock();
-    if(packet.header.seqNum < seqNum){
-        seqNumLock.unlock();
+    uint32_t seqNumExpected = seqNum;
+    seqNumLock.unlock();
+
+    // drop packet if the seqNum is smaller than expected.
+    if(packet.header.seqNum < seqNumExpected){
+        // ack the previous message
+        cout << "DUPLICATE ACK for: " <<  seqNumExpected - 1 << endl;
+        thread acker(sendAck, seqNumExpected - 1); acker.detach();
         return;
     }
-    seqNumLock.unlock();
 
     size_t bufIdx = packet.header.seqNum % data.size();
     pktLocks[bufIdx].lock();
@@ -170,8 +185,8 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         length[bufIdx] = packetLength - sizeof(msg_header_t);
 
 #ifdef DEBUG
-        printf("\nReceived seqNum: %d\n", packet.header.seqNum);
-        printf("Index Store: %lu, RECEIVED length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
+        // printf("\nReceived seqNum: %d\n", packet.header.seqNum);
+        // printf("Index Store: %lu, RECEIVED length: %lu\n", bufIdx, packetLength - sizeof(msg_header_t));
 #endif
 
     }

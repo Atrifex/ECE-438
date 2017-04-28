@@ -42,6 +42,12 @@ class CircularBuffer
         unsigned long long int bytesToTransfer;
         ifstream sourcefile;
         ofstream destfile;
+
+        // debuging
+        unsigned long long timeSinceStart();
+        struct timeval start;
+
+        ofstream ffile;
 };
 
 
