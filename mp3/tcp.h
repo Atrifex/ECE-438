@@ -51,6 +51,7 @@ class TCP
         // Fast recover and fast retransmit functions
         bool resendTOWindow();
         void resendWindow();
+        void updateWindowSettings(ack_process_t & pACK);
 
         // RTT function
         void updateTimingConstraints(unsigned long long rttSample);
@@ -77,7 +78,9 @@ class TCP
 
         // Book keeping
         tcp_state_t state;
-        uint32_t expectedSeqNum;
+        send_state_t sendState;
+        uint32_t expectedAckSeqNum;
+        uint32_t lastPacketSent;
         int numRetransmissions;
 
         // degbuging

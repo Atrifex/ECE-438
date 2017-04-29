@@ -79,6 +79,7 @@ using std::unique_lock;
 using std::ifstream;
 using std::ofstream;
 using std::min;
+using std::max;
 using std::unique_lock;
 using std::condition_variable;
 
@@ -127,7 +128,10 @@ typedef enum : uint8_t {
     CLOSING, TIME_WAIT
 } tcp_state_t;
 
-
-
+typedef enum : uint8_t {
+    WAITING_TO_SEND,
+    SLOW_START,
+    AIMD
+} send_state_t;
 
 #endif

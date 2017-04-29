@@ -53,13 +53,6 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     fileLoadCompleted = false;
     bytesToTransfer = bytesToSend;
 
-#ifdef FILE_CHECK
-    // sourcefile.seekg (0, sourcefile.end);
-    // int fileLength = sourcefile.tellg();
-    // sourcefile.seekg (0, sourcefile.beg);
-    // bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
-#endif
-
     gettimeofday(&start, 0);
 
     #ifdef DEBUG

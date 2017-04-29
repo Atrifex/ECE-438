@@ -6,6 +6,7 @@
 // Window Properties
 #define INIT_SWS                    (16)
 #define MAX_WINDOW_SIZE             (512)
+#define MIN_WINDOW_SIZE             (1)
 
 #define INIT_RTO                    (1)         // in seconds
 #define FIN_TO                      (2)         // in seconds
@@ -42,5 +43,7 @@
 #define MAX_STD_WEIGHT              ((double)4.0)                     // good at 4 --> questions how much you can trust instantaneous changes
 #define STD_SLOPE                   ((MAX_STD_WEIGHT)/((double)(MAX_RTT_HISTORY)))
 
+// Duplicate
+#define DUP_MAX_COUNTER             (3)
 
 #endif

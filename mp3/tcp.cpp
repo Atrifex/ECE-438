@@ -91,12 +91,15 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	}
 
 	// Book keeping
-	expectedSeqNum = 0;
+	expectedAckSeqNum = 0;
+	lastPacketSent = (0 - 1);
 	numRetransmissions = 0;
-	state = CLOSED;
 	srtt = 0.0;
 	rttRunningTotal = 0;
 	numRTTTotal = 0;
+
+	state = CLOSED;
+	sendState = WAITING_TO_SEND;
 	alpha = ALPHA;
 
 	#ifdef DEBUG
@@ -114,9 +117,12 @@ void TCP::senderSetupConnection()
 	syn.type = SYN_HEADER;
 	syn.seqNum = htonl(0);
 
+	state = LISTEN;
+
 	// send SYN
 	gettimeofday(&synTime, 0);
 	sendto(sockfd, (char *)&syn, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+
 	state = SYN_SENT;
 
 	// wait for SYN + ACK
@@ -126,29 +132,25 @@ void TCP::senderSetupConnection()
 
 	// send ACK
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
+
+	state = ESTABLISHED;
+	sendState = SLOW_START;
 }
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
     buffer = new CircularBuffer(MAX_WINDOW_SIZE, filename, bytesToTransfer);
 
-	state = LISTEN;
-
 	// Set up TCP connection
 	senderSetupConnection();
-
-	state = ESTABLISHED;
 
 	// send data
 	thread bufferHandler(bufferFiller, ref(*(this->buffer))); bufferHandler.detach();
 	thread sendHandler(packetSender, ref(*(this))); sendHandler.detach();
 	ackManager();
 
-	state = CLOSING;
-
 	// tear down TCP connection
 	senderTearDownConnection();
-
 }
 
 void TCP::senderTearDownConnection()
@@ -157,8 +159,11 @@ void TCP::senderTearDownConnection()
 	fin.type = FIN_HEADER;
 	fin.seqNum = htonl(0);
 
+	state = CLOSING;
+
 	// send FIN
 	sendto(sockfd, (char *)&fin, sizeof(msg_header_t), 0, &receiverAddr, receiverAddrLen);
+
 	state = FIN_SENT;
 
 	// wait for FIN + ACK
@@ -181,7 +186,7 @@ void TCP::ackManager()
 
 	while(true){
 		// Transmission completed
-		if(expectedSeqNum >= buffer->seqNum && buffer->fileLoadCompleted == true){
+		if(expectedAckSeqNum >= buffer->seqNum && buffer->fileLoadCompleted == true){
 			return;
 		}
 
@@ -205,9 +210,14 @@ void TCP::processTO()
 	#ifdef DEBUG
 		// afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
 		// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
-		// afile << "EXPECTED: " << expectedSeqNum << endl;
-		// afile.flush();
+		// afile << "EXPECTED: " << expectedAckSeqNum << endl;
+		afile << "\n\nWINDOW SIZE: " << buffer->windowSize << "\n\n";
+		afile.flush();
 	#endif
+
+	// Send Window Settings
+	sendState = AIMD;
+	// buffer->windowSize = max((buffer->windowSize)/2, MIN_WINDOW_SIZE);
 
 	// recalculate timing constraints
 	numRetransmissions++;
@@ -237,16 +247,16 @@ void TCP::processAcks(ack_process_t & pACK)
 		afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
 		afile.flush();
 		last = current;
-		afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
 		afile.flush();
 	#endif
 
-	if(expectedSeqNum == pACK.ack.seqNum){
+	if(expectedAckSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
 		updateTimingConstraints(rttSample);
-	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
+	}else if((expectedAckSeqNum - 1) == pACK.ack.seqNum){
 		rttSample = processDupAck(pACK, ackReceivedIdx);
-	}else if(expectedSeqNum < pACK.ack.seqNum){
+	}else if(expectedAckSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
 	}
 }
@@ -255,14 +265,7 @@ unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackRecei
 {
 	unsigned long long rttSample;
 
-	{	// Open window for sending thread
-		unique_lock<mutex> lkWin(buffer->idxLock);
-		buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
-		buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
-		expectedSeqNum = pACK.ack.seqNum + 1;
-		lkWin.unlock();
-		buffer->openWinCV.notify_one();
-	}
+	updateWindowSettings(pACK);
 
 	{
 		unique_lock<mutex> lkAck(buffer->pktLocks[ackReceivedIdx]);
@@ -292,7 +295,7 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 	static uint32_t dupAckSeen = (0 - 1);
 	static uint8_t counter = 0;
 
-	if(dupAckSeen == pACK.ack.seqNum && counter == 3){
+	if(dupAckSeen == pACK.ack.seqNum && counter == DUP_MAX_COUNTER){
 		resendWindow();
 		counter = 0;
 	}else if(dupAckSeen == pACK.ack.seqNum){
@@ -306,18 +309,10 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 {
 	unsigned long long rttSample;
 
-
-	{	// Open window for sending thread
-		unique_lock<mutex> lkWin(buffer->idxLock);
-		buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
-		buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
-		expectedSeqNum = pACK.ack.seqNum + 1;
-		lkWin.unlock();
-		buffer->openWinCV.notify_one();
-	}
+	updateWindowSettings(pACK);
 
 	// Handling missing acks based on cumulative out of order ACK
-	for(unsigned int i = (expectedSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
+	for(unsigned int i = (expectedAckSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
 		unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
 
 		#ifdef DEBUG
@@ -350,6 +345,20 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 	return rttSample;
 }
 
+void TCP::updateWindowSettings(ack_process_t & pACK)
+{
+	unique_lock<mutex> lkWin(buffer->idxLock);
+
+	if(sendState == SLOW_START) buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
+
+	buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
+	buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
+	expectedAckSeqNum = pACK.ack.seqNum + 1;
+
+	lkWin.unlock();
+	buffer->openWinCV.notify_one();
+}
+
 bool TCP::resendTOWindow()
 {
 	struct sockaddr_storage theirAddr;
@@ -362,7 +371,7 @@ bool TCP::resendTOWindow()
 	retransCheckTime.tv_usec = RETRANS_CHECK_TIME;
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &retransCheckTime, sizeof(retransCheckTime));
 
-	int j = (expectedSeqNum % buffer->data.size());
+	int j = (expectedAckSeqNum % buffer->data.size());
 	for(unsigned int i = 0; i < buffer->data.size(); i++) {
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
@@ -389,7 +398,7 @@ bool TCP::resendTOWindow()
 
 void TCP::resendWindow()
 {
-	int j = (expectedSeqNum % buffer->data.size());
+	int j = (expectedAckSeqNum % buffer->data.size());
 	for(unsigned int i = 0; i < buffer->data.size(); i++) {
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
@@ -433,7 +442,7 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 		// rttfile << "SRTT weight: " << srttWeight() << endl;
 		// rttfile << "STD weight: " << stdWeight()  << endl << endl;
 		// rttfile << "History Size: " << rttHistory.size() << endl;
-		rttfile << "Expected: " << expectedSeqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		rttfile << "Expected: " << expectedAckSeqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
 		rttfile << "StdDev: " << stdDevRTT() << endl;
 		rttfile << "RTT in microseconds: " << rttHistory.back() << endl;
 		rttfile << "RTO in microseconds: " << rtoNext << "\n\n";
@@ -467,12 +476,10 @@ void TCP::sendWindow()
 		auto last = std::chrono::high_resolution_clock::now();
 	#endif
 
-	uint32_t lastPacketSent = (0 - 1);
-
 	while(state == ESTABLISHED){
 		unique_lock<mutex> lkWin(buffer->idxLock);
 		buffer->openWinCV.wait(lkWin, [=]{
-			return (expectedSeqNum == (lastPacketSent + 1));
+			return (expectedAckSeqNum == (lastPacketSent + 1));
 		});
 		uint32_t i = buffer->sIdx; // protect with locks
 		uint32_t eIdx = buffer->eIdx;

@@ -1,6 +1,6 @@
 CXX = g++
 LD = g++
-CXXFLAGS = -c -g -std=c++11 -Wall -Wextra -pedantic -D FILE_CHECK -D DEBUG
+CXXFLAGS = -c -g -std=c++11 -Wall -Wextra -pedantic -D DEBUG
 LDFLAGS = -std=c++11 -pthread
 
 LIBFILES = types.h parameters.h
