@@ -3,9 +3,10 @@
 
 #include "types.h"
 
+// Window Properties
 #define SWS                         (16)
 #define RWS                         (SWS)
-#define MAX_WINDOW_SIZE             (256)
+#define MAX_WINDOW_SIZE             (512)
 
 #define INIT_RTO                    (1)         // in seconds
 #define FIN_TO                      (2)         // in seconds
@@ -26,11 +27,11 @@
 #define RETRANS_CHECK_TIME          (50)                              // 50 microseconds
 
 // RTT
-#define MAX_RTT_HISTORY             (500)
-#define DROP_HIST_WEIGHT            (10)                               // drop a multiple of 10 things everytime there is a timeout
+#define MAX_RTT_HISTORY             (MAX_WINDOW_SIZE)
+#define DROP_HIST_WEIGHT            (10)                              // drop a multiple of 10 things everytime there is a timeout
 
 // SRTT
-#define ALPHA                       ((double)0.125)                     // (1/8) is goood, acts like a low-pass filter
+#define ALPHA                       ((double)0.125)                   // (1/8) is goood, acts like a low-pass filter
 #define ALPHA_TO_SCALAR             ((double)0)
 #define ALPHA_MAX                   ((double)0.75)
 

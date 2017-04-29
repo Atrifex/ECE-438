@@ -1,10 +1,6 @@
 #!/bin/bash
 usage(){
-        echo "usage: ./test.sh [--help | -h]
-        [--generate-random | -r]
-        [--generate-seq | -s]
-        [--test-perfect-s | --tps]"
-
+        echo "usage: open script and look at options. Too many to document here."
 }
 
 make
@@ -24,16 +20,12 @@ do
             sh ./scripts/testPefectSender.sh $2
             exit
             ;;
-        --test-perfect-r | --tpr)
-            sh ./scripts/testPefectReceiver.sh $2
-            exit
-            ;;
         --test-lossy-s | --tls)
             sh ./scripts/testLossySender.sh $2 $3 $4
             exit
             ;;
-        --test-lossy-r | --tlr)
-            sh ./scripts/testLossyReceiver.sh $2
+        --test-r | --tr)
+            sh ./scripts/testReceiver.sh $2
             exit
             ;;
     esac
