@@ -300,6 +300,8 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 		counter = 0;
 	}else if(dupAckSeen == pACK.ack.seqNum){
 		counter++;
+	}else{
+		counter = 0;
 	}
 
 	return 0;
