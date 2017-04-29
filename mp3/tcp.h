@@ -67,7 +67,7 @@ class TCP
         double srtt;
         deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
         unsigned long long rttRunningTotal;
-        unsigned long long numAcksTotal;
+        unsigned long long numRTTTotal;
         double alpha;
 
         // Book keeping
@@ -76,7 +76,7 @@ class TCP
         int numRetransmissions;
 
         // degbuging
-        ofstream sfile, afile;
+        ofstream sfile, afile, rttfile;
 };
 
 
