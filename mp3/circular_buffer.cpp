@@ -7,11 +7,11 @@ struct sockaddr ackAddr;
 socklen_t ackAddrLen;
 
 CircularBuffer::~CircularBuffer() {
-    if (sourcefile.is_open()) {
-        sourcefile.close();
+    if (sourcefd > 0) {
+        close(sourcefd);
     }
-    if (destfile.is_open()) {
-        destfile.close();
+    if (destfd > 0) {
+        close(destfd);
     }
 }
 
@@ -33,8 +33,8 @@ unsigned long long CircularBuffer::timeSinceStart()
 /*************** Send Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int bytesToSend)
 {
-    sourcefile.open(filename, std::ios::in);
-    if (!(sourcefile.is_open())) {
+    sourcefd = open(filename, O_RDONLY);
+    if (sourcefd < 0) {
         std::cerr << "Unable to open source file\n";
         exit(1);
     }
@@ -51,10 +51,10 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = bytesToSend;
 
 #ifdef FILE_CHECK
-    sourcefile.seekg (0, sourcefile.end);
-    int fileLength = sourcefile.tellg();
-    sourcefile.seekg (0, sourcefile.beg);
-    bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
+    // sourcefile.seekg (0, sourcefile.end);
+    // int fileLength = sourcefile.tellg();
+    // sourcefile.seekg (0, sourcefile.beg);
+    // bytesToTransfer = min((unsigned long long)fileLength, bytesToSend);
 #endif
 
     gettimeofday(&start, 0);
@@ -65,7 +65,7 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 
 }
 
-void CircularBuffer::fill()
+void CircularBuffer::fillBuffer()
 {
     while(1){
         int bufferSize = data.size();
@@ -89,7 +89,7 @@ void CircularBuffer::fill()
             length[i] = packetLength + sizeof(msg_header_t);
 
             // read data into buffer
-            sourcefile.read(data[i].msg, packetLength);
+            read(sourcefd, data[i].msg, packetLength);
 
             // book keeping
             state[i] = FILLED;
@@ -104,9 +104,9 @@ void CircularBuffer::fill()
 /*************** Receive Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename)
 {
-    destfile.open(filename, std::ios::out);
-    if (!destfile.is_open()) {
-        perror("file open error");
+    destfd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (destfd < 0) {
+        std::cerr << "Unable to open dest file\n";
         exit(1);
     }
 
@@ -122,12 +122,13 @@ CircularBuffer::CircularBuffer(int size, char * filename)
     #endif
 }
 
-void CircularBuffer::flush()
+void CircularBuffer::flushBuffer()
 {
     for(size_t i = 0; i < data.size(); i++) {
         if(state[sIdx] == RECEIVED){
             // write to file
-            destfile.write(data[sIdx].msg, length[sIdx]);
+            write(destfd, data[sIdx].msg, length[sIdx]);
+            recvfile << "Writing to file: " <<  data[sIdx].header.seqNum << "\n";
 
             // book keeping
             state[sIdx] = WAITING;
@@ -136,7 +137,7 @@ void CircularBuffer::flush()
             break;
         }
     }
-    destfile.flush();
+
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -158,16 +159,17 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         seqNum++;
         #ifdef DEBUG
-            recvfile << "Packet Seen: " << packet.header.seqNum << endl;
+            // recvfile << "Packet Seen: " << packet.header.seqNum << endl;
         #endif
     }
 
     size_t bufIdx = packet.header.seqNum % data.size();
     if(state[bufIdx] == WAITING){
+        recvfile << "Setting: " <<  packet.header.seqNum << " as received\n";
         state[bufIdx] = RECEIVED;
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
     }
 
-    flush();
+    flushBuffer();
 }

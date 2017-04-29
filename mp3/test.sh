@@ -17,11 +17,11 @@ do
             exit
             ;;
         --test-perfect-s | --tps)
-            sh ./scripts/testPefectSender.sh $2
+            sh ./scripts/testPefectSender.sh $2 $3
             exit
             ;;
         --test-lossy-s | --tls)
-            sh ./scripts/testLossySender.sh $2 $3 $4
+            sh ./scripts/testLossySender.sh $2 $3 $4 $5
             exit
             ;;
         --test-r | --tr)

@@ -14,11 +14,11 @@ class CircularBuffer
         ~CircularBuffer();
 
         // sender member function
-        void fill();
+        void fillBuffer();
 
         // receiver member function
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
-        void flush();
+        void flushBuffer();
 
         void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
 
@@ -42,8 +42,8 @@ class CircularBuffer
         // Meta data
         unsigned long long int bytesToTransfer;
         bool fileLoadCompleted;
-        ifstream sourcefile;
-        ofstream destfile;
+        int sourcefd;
+        int destfd;
 
         // debuging
         unsigned long long timeSinceStart();

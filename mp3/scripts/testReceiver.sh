@@ -2,6 +2,7 @@
 
 for i in $(seq 1 $1)
 do
+    rm -f destfile
     echo "Testing iteration ${i}"
     echo "."
     echo "."

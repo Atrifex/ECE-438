@@ -12,7 +12,7 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 void bufferFiller(CircularBuffer & buffer) {
-	buffer.fill();
+	buffer.fillBuffer();
 }
 
 void packetSender(TCP & connection) {
@@ -204,10 +204,10 @@ void TCP::ackManager()
 void TCP::processTO()
 {
 	#ifdef DEBUG
-		afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
+		// afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
 		// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
 		// afile << "EXPECTED: " << expectedSeqNum << endl;
-		afile.flush();
+		// afile.flush();
 	#endif
 
 	// recalculate timing constraints
@@ -221,8 +221,6 @@ void TCP::processTO()
 
 	// Resend window
 	if(resendTOWindow() == false) return;
-
-	cout << "Returning from function\n";
 }
 
 
@@ -240,8 +238,8 @@ void TCP::processAcks(ack_process_t & pACK)
 		afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
 		afile.flush();
 		last = current;
-		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		// afile.flush();
+		afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
 	#endif
 
 	if(expectedSeqNum == pACK.ack.seqNum){
@@ -292,6 +290,7 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 	}else if(dupAckSeen == pACK.ack.seqNum){
 		counter++;
 	}
+
 	return 0;
 }
 

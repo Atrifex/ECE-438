@@ -53,6 +53,9 @@
 #include <deque>
 #include <cmath>
 
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 using std::sqrt;
 using std::thread;
