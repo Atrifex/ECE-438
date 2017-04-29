@@ -203,16 +203,6 @@ void TCP::ackManager()
 
 void TCP::processTO()
 {
-	struct sockaddr_storage theirAddr;
-	socklen_t theirAddrLen = sizeof(theirAddr);
-	ack_process_t pACK;
-
-	// set timing options for acks during retransmission
-	struct timeval retransCheckTime;
-	retransCheckTime.tv_sec = 0;
-	retransCheckTime.tv_usec = RETRANS_CHECK_TIME;
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &retransCheckTime, sizeof(retransCheckTime));
-
 	#ifdef DEBUG
 		afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
 		// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
@@ -229,37 +219,15 @@ void TCP::processTO()
 	rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
 	rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
 
-	// Resend window ---> TODO: Need to change this to account for
-	int j = (expectedSeqNum % buffer->data.size());
-	for(unsigned int i = 0; i < buffer->data.size(); i++) {
-		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
-		if(buffer->state[j] == SENT){
-			#ifdef DEBUG
-				afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-				afile.flush();
-			#endif
+	// Resend window
+	if(resendTOWindow() == false) return;
 
-			// TODO: Decide what to do what RTT for retransmitted packet
-			// gettimeofday(&(buffer->timestamp[j]), 0);
-			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
-
-			if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) != -1){
-				lkTO.unlock();
-				processAcks(pACK);
-				return;
-			}
-		}
-		j = (j + 1) % buffer->data.size();
-	}
 	cout << "Returning from function\n";
 }
 
+
 void TCP::processAcks(ack_process_t & pACK)
 {
-	#ifdef DEBUG
-		static auto last = std::chrono::high_resolution_clock::now();
-	#endif
-
 	unsigned long long rttSample;
 
 	gettimeofday(&(pACK.time), 0);
@@ -267,18 +235,20 @@ void TCP::processAcks(ack_process_t & pACK)
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
 
 	#ifdef DEBUG
-		afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		static auto last = std::chrono::high_resolution_clock::now();
+		auto current = std::chrono::high_resolution_clock::now();
+		afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
 		afile.flush();
+		last = current;
+		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		// afile.flush();
 	#endif
 
 	if(expectedSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
 		updateTimingConstraints(rttSample);
 	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
-		#ifdef DEBUG
-			afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-			afile.flush();
-		#endif
+		rttSample = processDupAck(pACK, ackReceivedIdx);
 	}else if(expectedSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
 	}
@@ -304,6 +274,25 @@ unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackRecei
 	expectedSeqNum = pACK.ack.seqNum + 1;
 
 	return rttSample;
+}
+
+unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
+{
+	#ifdef DEBUG
+	afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
+	afile.flush();
+	#endif
+
+	static uint32_t dupAckSeen = (0 - 1);
+	static uint8_t counter = 0;
+
+	if(dupAckSeen == pACK.ack.seqNum && counter == 3){
+		resendWindow();
+		counter = 0;
+	}else if(dupAckSeen == pACK.ack.seqNum){
+		counter++;
+	}
+	return 0;
 }
 
 unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
@@ -346,6 +335,59 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 	return rttSample;
 }
 
+bool TCP::resendTOWindow()
+{
+	struct sockaddr_storage theirAddr;
+	socklen_t theirAddrLen = sizeof(theirAddr);
+	ack_process_t pACK;
+
+	// set timing options for acks during retransmission
+	struct timeval retransCheckTime;
+	retransCheckTime.tv_sec = 0;
+	retransCheckTime.tv_usec = RETRANS_CHECK_TIME;
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &retransCheckTime, sizeof(retransCheckTime));
+
+	int j = (expectedSeqNum % buffer->data.size());
+	for(unsigned int i = 0; i < buffer->data.size(); i++) {
+		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
+		if(buffer->state[j] == SENT){
+			#ifdef DEBUG
+			afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+			afile.flush();
+			#endif
+
+			// TODO: Decide what to do what RTT for retransmitted packet
+			gettimeofday(&(buffer->timestamp[j]), 0);
+			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
+
+			if(recvfrom(sockfd, (char *)&pACK.ack, sizeof(ack_packet_t), 0, (struct sockaddr*)&theirAddr, &theirAddrLen) != -1){
+				lkTO.unlock();
+				processAcks(pACK);
+				return false;
+			}
+		}
+		j = (j + 1) % buffer->data.size();
+	}
+
+	return true;
+}
+
+void TCP::resendWindow()
+{
+	int j = (expectedSeqNum % buffer->data.size());
+	for(unsigned int i = 0; i < buffer->data.size(); i++) {
+		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
+		if(buffer->state[j] == SENT){
+			#ifdef DEBUG
+			afile << "Retransmit (DUPLICATE ACK): " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+			afile.flush();
+			#endif
+			gettimeofday(&(buffer->timestamp[j]), 0);
+			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
+		}
+		j = (j + 1) % buffer->data.size();
+	}
+}
 
 void TCP::updateTimingConstraints(unsigned long long rttSample)
 {

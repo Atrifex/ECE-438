@@ -41,11 +41,16 @@ class TCP
 
         // ACK Processing
         void ackManager();
-        void processAcks(ack_process_t & pACK);
         void processTO();
+        void processAcks(ack_process_t & pACK);
         unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
+        unsigned long long processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
         unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
 
+
+        // Fast recover and fast retransmit functions
+        bool resendTOWindow();
+        void resendWindow();
 
         // RTT function
         void updateTimingConstraints(unsigned long long rttSample);
