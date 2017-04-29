@@ -4,8 +4,7 @@
 #include "types.h"
 
 // Window Properties
-#define SWS                         (16)
-#define RWS                         (SWS)
+#define INIT_SWS                    (16)
 #define MAX_WINDOW_SIZE             (512)
 
 #define INIT_RTO                    (1)         // in seconds

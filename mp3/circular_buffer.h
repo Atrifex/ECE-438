@@ -23,11 +23,11 @@ class CircularBuffer
         void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
 
         // member variables
-        int sIdx;
+        mutex idxLock;
+        uint32_t sIdx, eIdx, windowSize;
         unsigned int payload;
 
         // seqNum
-        mutex seqNumLock;
         uint32_t seqNum;
 
         // data
@@ -38,6 +38,7 @@ class CircularBuffer
         mutex pktLocks[MAX_WINDOW_SIZE];
         condition_variable senderCV;
         condition_variable fillerCV;
+        condition_variable openWinCV;
 
         // Meta data
         unsigned long long int bytesToTransfer;

@@ -44,9 +44,12 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     length.resize(size);
     data.resize(size);
 
+    sIdx = 0;
+    eIdx = INIT_SWS - 1;
+    windowSize = INIT_SWS;
+
     payload = PAYLOAD;
     seqNum = 0;
-    sIdx = 0;
     fileLoadCompleted = false;
     bytesToTransfer = bytesToSend;
 
@@ -68,8 +71,7 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 void CircularBuffer::fillBuffer()
 {
     while(1){
-        int bufferSize = data.size();
-        for(int i = 0; i < bufferSize; i++) {
+        for(uint32_t i = 0; i < data.size(); i++) {
             if(bytesToTransfer <= 0){
                 fileLoadCompleted = true;
                 return;
@@ -104,7 +106,7 @@ void CircularBuffer::fillBuffer()
 /*************** Receive Buffer ***************/
 CircularBuffer::CircularBuffer(int size, char * filename)
 {
-    destfd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    destfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (destfd < 0) {
         std::cerr << "Unable to open dest file\n";
         exit(1);
@@ -159,7 +161,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         seqNum++;
         #ifdef DEBUG
-            // recvfile << "Packet Seen: " << packet.header.seqNum << endl;
+            recvfile << "Packet Seen: " << packet.header.seqNum << endl;
         #endif
     }
 

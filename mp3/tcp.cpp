@@ -2,8 +2,7 @@
 #include "tcp.h"
 
 // get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
+void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET) {
 		return &(((struct sockaddr_in*)sa)->sin_addr);
 	}
@@ -250,26 +249,35 @@ void TCP::processAcks(ack_process_t & pACK)
 	}else if(expectedSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
 	}
-
 }
 
 unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
 {
 	unsigned long long rttSample;
 
-	unique_lock<mutex> lkAck(buffer->pktLocks[ackReceivedIdx]);
-	buffer->state[ackReceivedIdx] = AVAILABLE;
+	{	// Open window for sending thread
+		unique_lock<mutex> lkWin(buffer->idxLock);
+		buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
+		buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
+		expectedSeqNum = pACK.ack.seqNum + 1;
+		lkWin.unlock();
+		buffer->openWinCV.notify_one();
+	}
 
-	rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec;
+	{
+		unique_lock<mutex> lkAck(buffer->pktLocks[ackReceivedIdx]);
+		buffer->state[ackReceivedIdx] = AVAILABLE;
 
-	#ifdef DEBUG
-		afile << "ACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		afile.flush();
-	#endif
+		rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec;
 
-	lkAck.unlock();
-	buffer->fillerCV.notify_one();
-	expectedSeqNum = pACK.ack.seqNum + 1;
+		#ifdef DEBUG
+			afile << "ACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+			afile.flush();
+		#endif
+
+		lkAck.unlock();
+		buffer->fillerCV.notify_one();
+	}
 
 	return rttSample;
 }
@@ -297,6 +305,16 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
 {
 	unsigned long long rttSample;
+
+
+	{	// Open window for sending thread
+		unique_lock<mutex> lkWin(buffer->idxLock);
+		buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
+		buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
+		expectedSeqNum = pACK.ack.seqNum + 1;
+		lkWin.unlock();
+		buffer->openWinCV.notify_one();
+	}
 
 	// Handling missing acks based on cumulative out of order ACK
 	for(unsigned int i = (expectedSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
@@ -328,8 +346,6 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 		lkAck.unlock();
 		buffer->fillerCV.notify_one();
 	}
-
-	expectedSeqNum = pACK.ack.seqNum + 1;
 
 	return rttSample;
 }
@@ -424,7 +440,6 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 	#endif
 }
 
-
 double TCP::stdDevRTT()
 {
 	double meanRTT = (1.0*(double)rttRunningTotal)/((double)numRTTTotal);
@@ -446,24 +461,28 @@ inline double TCP::srttWeight(){
 	return (SRTT_SLOPE*((double)rttHistory.size()) + MAX_SRTT_WEIGHT);
 }
 
-
 void TCP::sendWindow()
 {
 	#ifdef DEBUG
 		auto last = std::chrono::high_resolution_clock::now();
 	#endif
 
+	uint32_t lastPacketSent = (0 - 1);
+
 	while(state == ESTABLISHED){
-		int bufferSize = buffer->data.size();
-		// i = sIdx; i != endindex; i += i % bufferSize
-		for(int i = 0; i < bufferSize; i++) {
+		unique_lock<mutex> lkWin(buffer->idxLock);
+		buffer->openWinCV.wait(lkWin, [=]{
+			return (expectedSeqNum == (lastPacketSent + 1));
+		});
+		uint32_t i = buffer->sIdx; // protect with locks
+		uint32_t eIdx = buffer->eIdx;
+		lkWin.unlock();
+
+		for(;i != eIdx; i = (i + 1)%MAX_WINDOW_SIZE) {
 			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
 			buffer->senderCV.wait(lkSend, [=]{
 				return (buffer->state[i] == FILLED);
 			});
-
-			// record timestamp before sending
-			gettimeofday(&(buffer->timestamp[i]), 0);
 
 			#ifdef DEBUG
 				const auto current = std::chrono::high_resolution_clock::now();
@@ -473,8 +492,37 @@ void TCP::sendWindow()
 				last = current;
 			#endif
 
+			gettimeofday(&(buffer->timestamp[i]), 0);
 			sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
 			buffer->state[i] = SENT;
+
+			lkSend.unlock();
+
+			// book keeping
+			lastPacketSent++;
+		}
+
+		{	// handlign edge case of idx == eIdx
+			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
+			buffer->senderCV.wait(lkSend, [=]{
+				return (buffer->state[i] == FILLED);
+			});
+
+			#ifdef DEBUG
+				const auto current = std::chrono::high_resolution_clock::now();
+				sfile << ntohl(buffer->data[i].header.seqNum);
+				sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
+				sfile.flush();
+				last = current;
+			#endif
+
+			gettimeofday(&(buffer->timestamp[i]), 0);
+			sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+			buffer->state[i] = SENT;
+			lkSend.unlock();
+
+			// book keeping
+			lastPacketSent++;
 		}
     }
 }
