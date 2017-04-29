@@ -131,7 +131,7 @@ void TCP::senderSetupConnection()
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
-    buffer = new CircularBuffer(SWS, filename, bytesToTransfer);
+    buffer = new CircularBuffer(MAX_WINDOW_SIZE, filename, bytesToTransfer);
 
 	state = LISTEN;
 
@@ -541,7 +541,7 @@ void TCP::receiverSetupConnection()
 void TCP::reliableReceive(char * filename)
 {
 
-	buffer = new CircularBuffer(SWS, filename);
+	buffer = new CircularBuffer(MAX_WINDOW_SIZE, filename);
 
 	state = LISTEN;
 
