@@ -19,5 +19,9 @@ int main(int argc, char** argv) {
 	TCP receiver(argv[1]);
 
 	// receive file
+	const auto start = std::chrono::high_resolution_clock::now();
 	receiver.reliableReceive(argv[2]);
+	const auto end = std::chrono::high_resolution_clock::now();
+
+	cout << "Received in: " << std::chrono::duration<double, std::milli>(end - start).count() << " milliseconds.\n";
 }

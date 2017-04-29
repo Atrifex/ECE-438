@@ -50,6 +50,7 @@ class CircularBuffer
         struct timeval start;
 
         ofstream ffile;
+        ofstream recvfile;
 };
 
 

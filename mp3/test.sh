@@ -7,6 +7,8 @@ usage(){
 
 }
 
+make
+
 while [ ! $# -eq 0 ]
 do
     case "$1" in
@@ -24,6 +26,14 @@ do
             ;;
         --test-perfect-r | --tpr)
             sh ./scripts/testPefectReceiver.sh $2
+            exit
+            ;;
+        --test-lossy-s | --tls)
+            sh ./scripts/testLossySender.sh $2 $3 $4
+            exit
+            ;;
+        --test-lossy-r | --tlr)
+            sh ./scripts/testLossyReceiver.sh $2
             exit
             ;;
     esac

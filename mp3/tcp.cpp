@@ -213,10 +213,10 @@ void TCP::processTO()
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &retransCheckTime, sizeof(retransCheckTime));
 
 	#ifdef DEBUG
-		// cout << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
-		// cout << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
-		// cout << "EXPECTED: " << expectedSeqNum << endl;
-		// cout.flush();
+		afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
+		// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
+		// afile << "EXPECTED: " << expectedSeqNum << endl;
+		afile.flush();
 	#endif
 
 	// recalculate timing constraints
@@ -262,16 +262,16 @@ void TCP::processAcks(ack_process_t & pACK)
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
 
 	#ifdef DEBUG
-		// afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		// afile.flush();
+		afile << "expected: " << expectedSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
 	#endif
 
 	if(expectedSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
 	}else if((expectedSeqNum - 1) == pACK.ack.seqNum){
 		#ifdef DEBUG
-			// afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-			// afile.flush();
+			afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
+			afile.flush();
 		#endif
 	}else if(expectedSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);

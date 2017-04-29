@@ -116,6 +116,10 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 
     seqNum = 0;
     sIdx = 0;
+
+    #ifdef DEBUG
+        recvfile.open("recvLog", std::ios::out);
+    #endif
 }
 
 void CircularBuffer::flush()
@@ -124,15 +128,15 @@ void CircularBuffer::flush()
         if(state[sIdx] == RECEIVED){
             // write to file
             destfile.write(data[sIdx].msg, length[sIdx]);
-            destfile.flush();
 
             // book keeping
             state[sIdx] = WAITING;
             sIdx = (sIdx+1)%data.size();
         } else{
-            return;
+            break;
         }
     }
+    destfile.flush();
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -143,7 +147,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 
     packet.header.seqNum = ntohl(packet.header.seqNum);
 
-    if(packet.header.seqNum < seqNum){
+    if(packet.header.seqNum != seqNum){
         // send ACK the previous message
         ack.seqNum = htonl(seqNum - 1);
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
@@ -153,6 +157,9 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         ack.seqNum = htonl(seqNum);
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         seqNum++;
+        #ifdef DEBUG
+            recvfile << "Packet Seen: " << packet.header.seqNum << endl;
+        #endif
     }
 
     size_t bufIdx = packet.header.seqNum % data.size();
