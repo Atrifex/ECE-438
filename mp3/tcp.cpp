@@ -83,8 +83,8 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	freeaddrinfo(servinfo);
 
 	// Initial time out estimation
-	rto.tv_sec = INIT_RTO;
-	rto.tv_usec = 0;
+	rto.tv_sec = 0;
+	rto.tv_usec = INIT_RTO;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto)) < 0) {
 		perror("setsockopt");
 		exit(3);
@@ -139,7 +139,7 @@ void TCP::senderSetupConnection()
 
 void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 {
-    buffer = new CircularBuffer(MAX_WINDOW_SIZE, filename, bytesToTransfer);
+    buffer = new CircularBuffer(BUFFER_SIZE, filename, bytesToTransfer);
 
 	// Set up TCP connection
 	senderSetupConnection();
@@ -196,6 +196,9 @@ void TCP::ackManager()
 			processTO();
 			continue;
 		}
+
+		// drop buffered syn_ack messages
+		if(pACK.ack.type != ACK_HEADER) continue;
 
 		//process ack if received
 		processAcks(pACK);
@@ -355,15 +358,15 @@ void TCP::updateWindowSettings(ack_process_t & pACK)
 
 	if((sendState == SLOW_START) || (sendState == AIMD && (pACK.ack.seqNum % buffer->windowSize) == (buffer->windowSize - 1))){
 		buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
-		cout << "WINDOW SIZE: " << buffer->windowSize << "\n";
+		// cout << "WINDOW SIZE: " << buffer->windowSizsube << "\n";
 	}
 
-	buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
-	buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
+	buffer->sIdx = (pACK.ack.seqNum + 1)% BUFFER_SIZE;
+	buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% BUFFER_SIZE;
 	expectedAckSeqNum = pACK.ack.seqNum + 1;
 
 	lkWin.unlock();
-	buffer->openWinCV.notify_one();
+	buffer->openWinCV.notify_all();
 }
 
 bool TCP::resendTOWindow()
@@ -397,7 +400,7 @@ bool TCP::resendTOWindow()
 				return false;
 			}
 		}
-		j = (j + 1) % MAX_WINDOW_SIZE;
+		j = (j + 1) % BUFFER_SIZE;
 	}
 
 	return true;
@@ -419,7 +422,7 @@ void TCP::resendWindow()
 			gettimeofday(&(buffer->timestamp[j]), 0);
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 		}
-		j = (j + 1) % MAX_WINDOW_SIZE;
+		j = (j + 1) % BUFFER_SIZE;
 	}
 }
 
@@ -494,9 +497,9 @@ void TCP::sendWindow()
 		uint32_t eIdx = buffer->eIdx;
 		lkWin.unlock();
 
-		uint32_t i = (lastPacketSent + 1) % MAX_WINDOW_SIZE; // protect with locks
+		uint32_t i = (lastPacketSent + 1) % BUFFER_SIZE; // protect with locks
 
-		for(;i != eIdx; i = (i + 1)%MAX_WINDOW_SIZE) {
+		for(;i != eIdx; i = (i + 1)%BUFFER_SIZE) {
 			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
 			buffer->senderCV.wait(lkSend, [=]{
 				return (buffer->state[i] == FILLED);
@@ -607,7 +610,7 @@ void TCP::receiverSetupConnection()
 void TCP::reliableReceive(char * filename)
 {
 
-	buffer = new CircularBuffer(MAX_WINDOW_SIZE, filename);
+	buffer = new CircularBuffer(BUFFER_SIZE, filename);
 
 	state = LISTEN;
 
@@ -729,7 +732,7 @@ int TCP::receiveStartSynAck(struct timeval synZeroTime)
 			numRTTTotal++;
 			srtt = initialRTT;
 			rttHistory.push_back(initialRTT);
-			initialRTO = 2*initialRTT;
+			initialRTO = min(2*initialRTT, (unsigned long long)INIT_RTO);
 			rto.tv_sec = initialRTO/US_PER_SEC;
 			rto.tv_usec = initialRTO%US_PER_SEC;
 
@@ -799,15 +802,15 @@ void TCP::receiveEndAck(msg_header_t fin_ack)
 	socklen_t theirAddrLen = sizeof(theirAddr);
 	ack_packet_t ack;
 
-	rto.tv_sec = FIN_TO;
-	rto.tv_usec = 0;
+	rto.tv_sec = 0;
+	rto.tv_usec = FIN_TO;
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rto, sizeof(rto));
 
 	state = TIME_WAIT;
 
 	while(true){
 		if (((recvfrom(sockfd, (char *)&ack, sizeof(ack_packet_t) , 0, (struct sockaddr *)&theirAddr, &theirAddrLen)) == -1)
-			|| ack.type == ACK_HEADER){
+			|| ack.type != FIN_HEADER){
 			break;
 		}else{
 			// If fin_ack, lost then resend

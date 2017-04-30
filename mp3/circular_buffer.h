@@ -38,7 +38,7 @@ class CircularBuffer
         vector<struct timeval> timestamp;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
-        mutex pktLocks[MAX_WINDOW_SIZE];
+        mutex pktLocks[BUFFER_SIZE];
         condition_variable senderCV;
         condition_variable fillerCV;
         condition_variable openWinCV;

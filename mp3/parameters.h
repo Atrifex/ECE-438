@@ -4,12 +4,13 @@
 #include "types.h"
 
 // Window Properties
-#define INIT_SWS                    (16)
-#define MAX_WINDOW_SIZE             (512)
-#define MIN_WINDOW_SIZE             (1)
+#define INIT_SWS                    (100)
+#define BUFFER_SIZE                 (512)
+#define MAX_WINDOW_SIZE             (BUFFER_SIZE/2)
+#define MIN_WINDOW_SIZE             (10)
 
-#define INIT_RTO                    (1)         // in seconds
-#define FIN_TO                      (2)         // in seconds
+#define INIT_RTO                    (80000)     // in microseconds
+#define FIN_TO                      (100000)         // in seconds
 #define MAX_RTO                     (2000000)   // in microseconds
 
 // Header Flags
@@ -27,7 +28,7 @@
 #define RETRANS_CHECK_TIME          (50)                              // 50 microseconds
 
 // RTT
-#define MAX_RTT_HISTORY             (MAX_WINDOW_SIZE)
+#define MAX_RTT_HISTORY             (BUFFER_SIZE)
 #define DROP_HIST_WEIGHT            (10)                              // drop a multiple of 10 things everytime there is a timeout
 
 // SRTT

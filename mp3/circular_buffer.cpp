@@ -123,8 +123,8 @@ void CircularBuffer::fillBuffer()
                 return;
             }
 
-            unique_lock<mutex> lkFill(pktLocks[i]);
-            fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE && outsideWindow(i));});
+            unique_lock<mutex> lkFill(idxLock);
+            openWinCV.wait(lkFill, [=]{return (state[i] == AVAILABLE && outsideWindow(i));});
 
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
@@ -142,7 +142,7 @@ void CircularBuffer::fillBuffer()
             // book keeping
             state[i] = FILLED;
             lkFill.unlock();
-            senderCV.notify_one();
+            senderCV.notify_all();
 
             bytesToTransfer -= packetLength;
         }
@@ -213,6 +213,8 @@ void CircularBuffer::sendAck(msg_packet_t & packet)
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
 {
+    ack_packet_t ack;
+    ack.type = ACK_HEADER;
     packet.header.seqNum = ntohl(packet.header.seqNum);
     size_t bufIdx = packet.header.seqNum % data.size();
 
@@ -220,7 +222,13 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         recvfile << "Packet Seen: " << packet.header.seqNum << endl;
     #endif
 
-    if(packet.header.seqNum < seqNum){
+    // static counter = 0;
+
+    if(packet.header.seqNum == seqNum - 1){
+        // ack.seqNum = htonl(seqNum - 1);
+        // sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+        return;
+    }else if(packet.header.seqNum < seqNum){
         return;
     }
 
