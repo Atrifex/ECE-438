@@ -355,7 +355,7 @@ void TCP::updateWindowSettings(ack_process_t & pACK)
 
 	if((sendState == SLOW_START) || (sendState == AIMD && (pACK.ack.seqNum % buffer->windowSize) == (buffer->windowSize - 1))){
 		buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
-		// cout << "WINDOW SIZE: " << buffer->windowSize << "\n";
+		cout << "WINDOW SIZE: " << buffer->windowSize << "\n";
 	}
 
 	buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
