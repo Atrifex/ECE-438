@@ -31,7 +31,7 @@ class CircularBuffer
         unsigned int payload;
 
         // seqNum
-        uint32_t seqNum;
+        int seqNum;
 
         // data
         vector<packet_state_t> state;

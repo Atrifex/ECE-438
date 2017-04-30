@@ -79,8 +79,8 @@ class TCP
         // Book keeping
         tcp_state_t state;
         send_state_t sendState;
-        uint32_t expectedAckSeqNum;
-        uint32_t lastPacketSent;
+        int expectedAckSeqNum;
+        int lastPacketSent;
         int numRetransmissions;
 
         // degbuging

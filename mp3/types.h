@@ -88,7 +88,7 @@ typedef pair<int,int> int_pair;
 #pragma pack(1)
 typedef struct {
     uint8_t type;
-    uint32_t seqNum;
+    int seqNum;
 } msg_header_t;
 
 #define PAYLOAD (1472 - sizeof(msg_header_t))
@@ -102,7 +102,7 @@ typedef struct {
 #pragma pack(1)
 typedef struct {
     uint8_t type;
-    uint32_t seqNum;
+    int seqNum;
 } ack_packet_t;
 
 typedef struct {

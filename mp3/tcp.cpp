@@ -92,7 +92,7 @@ TCP::TCP(char * hostname, char * hostUDPport)
 
 	// Book keeping
 	expectedAckSeqNum = 0;
-	lastPacketSent = (0 - 1);
+	lastPacketSent = -1;
 	numRetransmissions = 0;
 	srtt = 0.0;
 	rttRunningTotal = 0;
@@ -256,7 +256,7 @@ void TCP::processAcks(ack_process_t & pACK)
 		updateTimingConstraints(rttSample);
 	} else if(expectedAckSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
-	} else if((expectedAckSeqNum - 1) == pACK.ack.seqNum){
+	} else if(expectedAckSeqNum == pACK.ack.seqNum + 1){
 		rttSample = processDupAck(pACK, ackReceivedIdx);
 	}
 }
@@ -289,7 +289,7 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 {
 	unsigned long long rttSample;
 
-	uint32_t curExpectedAckSeqNum = expectedAckSeqNum;
+	int curExpectedAckSeqNum = expectedAckSeqNum;
 
 	updateWindowSettings(pACK);
 
@@ -334,7 +334,7 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 		afile.flush();
 	#endif
 
-	static uint32_t dupAckLastSeen = (0 - 1);
+	static int dupAckLastSeen = -1;
 	static uint8_t counter  = 0;
 	static uint8_t counterPost = 0;
 
