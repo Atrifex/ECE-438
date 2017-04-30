@@ -500,50 +500,33 @@ void TCP::sendWindow()
 		uint32_t i = (lastPacketSent + 1) % BUFFER_SIZE; // protect with locks
 
 		for(;i != eIdx; i = (i + 1)%BUFFER_SIZE) {
-			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
-			buffer->senderCV.wait(lkSend, [=]{
-				return (buffer->state[i] == FILLED);
-			});
+ 			if(buffer->state[i] == FILLED){
+				#ifdef DEBUG
+					const auto current = std::chrono::high_resolution_clock::now(); sfile << ntohl(buffer->data[i].header.seqNum); sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; sfile.flush(); last = current;
+				#endif
 
-			#ifdef DEBUG
-				const auto current = std::chrono::high_resolution_clock::now();
-				sfile << ntohl(buffer->data[i].header.seqNum);
-				sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
-				sfile.flush();
-				last = current;
-			#endif
+				gettimeofday(&(buffer->timestamp[i]), 0);
+				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+				buffer->state[i] = SENT;
 
-			gettimeofday(&(buffer->timestamp[i]), 0);
-			sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
-			buffer->state[i] = SENT;
-
-			lkSend.unlock();
-
-			// book keeping
-			lastPacketSent++;
+				// book keeping
+				lastPacketSent++;
+			}
 		}
 
 		{	// handlign edge case of idx == eIdx
-			unique_lock<mutex> lkSend(buffer->pktLocks[i]);
-			buffer->senderCV.wait(lkSend, [=]{
-				return (buffer->state[i] == FILLED);
-			});
+			if(buffer->state[i] == FILLED){
+				#ifdef DEBUG
+					const auto current = std::chrono::high_resolution_clock::now(); sfile << ntohl(buffer->data[i].header.seqNum); sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; sfile.flush(); last = current;
+				#endif
 
-			#ifdef DEBUG
-				const auto current = std::chrono::high_resolution_clock::now();
-				sfile << ntohl(buffer->data[i].header.seqNum);
-				sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
-				sfile.flush();
-				last = current;
-			#endif
+				gettimeofday(&(buffer->timestamp[i]), 0);
+				sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
+				buffer->state[i] = SENT;
 
-			gettimeofday(&(buffer->timestamp[i]), 0);
-			sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
-			buffer->state[i] = SENT;
-			lkSend.unlock();
-
-			// book keeping
-			lastPacketSent++;
+				// book keeping
+				lastPacketSent++;
+			}
 		}
     }
 }

@@ -222,8 +222,6 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         recvfile << "Packet Seen: " << packet.header.seqNum << endl;
     #endif
 
-    // static counter = 0;
-
     if(packet.header.seqNum == seqNum - 1){
         // ack.seqNum = htonl(seqNum - 1);
         // sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
