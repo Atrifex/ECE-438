@@ -40,7 +40,7 @@ class TCP
         void receiveEndAck(msg_header_t fin_ack);
 
         // ACK Processing
-        void ackManager();
+        bool ackManager();
         void processTO();
         void processAcks(ack_process_t & pACK);
         unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
@@ -49,7 +49,7 @@ class TCP
 
 
         // Fast recover and fast retransmit functions
-        bool resendTOWindow();
+        void resendTOWindow();
         void resendWindow();
         void updateWindowSettings(ack_process_t & pACK);
 

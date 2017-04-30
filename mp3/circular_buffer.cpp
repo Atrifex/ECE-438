@@ -61,22 +61,20 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 
 }
 
-bool CircularBuffer::initialFill()
+void CircularBuffer::initialFill()
 {
     for(uint32_t i = 0; i < data.size(); i++) {
         if(bytesToTransfer <= 0){
             fileLoadCompleted = true;
-            return true;
+            return;
         }
-
-        unique_lock<mutex> lkFill(pktLocks[i]);
-        fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE);});
 
         int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
         #ifdef DEBUG
             ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
         #endif
+
         // initialize header
         data[i].header.type = DATA_HEADER;
         data[i].header.seqNum = htonl(seqNum++);
@@ -87,23 +85,26 @@ bool CircularBuffer::initialFill()
 
         // book keeping
         state[i] = FILLED;
-        lkFill.unlock();
-        senderCV.notify_one();
-
         bytesToTransfer -= packetLength;
     }
-
-    return false;
 }
 
 bool CircularBuffer::outsideWindow(uint32_t index)
 {
+    #ifdef DEBUG
+        // ffile << "Top of outside window function.\n\n"; ffile.flush();
+        ffile << "Index: " <<  index <<  ", start: " << sIdx << ", end: " << eIdx << "\n"; ffile.flush();
+    #endif
 
     if((sIdx <= eIdx) && (index < sIdx || eIdx < index)){
         return true;
     }else if(eIdx <= sIdx && (index < sIdx && eIdx < index)){
-            return true;
+        return true;
     }
+
+    #ifdef DEBUG
+        ffile << "Somehow inside window.\n\n"; ffile.flush();
+    #endif
 
     return false;
 }
@@ -111,26 +112,23 @@ bool CircularBuffer::outsideWindow(uint32_t index)
 
 void CircularBuffer::fillBuffer()
 {
+    static uint32_t i = 0;
+    for( ; i < data.size(); i = (i + 1)%BUFFER_SIZE) {
+        if(bytesToTransfer <= 0){
+            fileLoadCompleted = true;
+            #ifdef DEBUG
+                ffile << "Load of file completed.\n\n"; ffile.flush();
+            #endif
+            return;
+        }
 
-    if(initialFill() == true){
-        return;
-    }
-
-    while(1){
-        for(uint32_t i = 0; i < data.size(); i++) {
-            if(bytesToTransfer <= 0){
-                fileLoadCompleted = true;
-                return;
-            }
-
-            unique_lock<mutex> lkFill(idxLock);
-            openWinCV.wait(lkFill, [=]{return (state[i] == AVAILABLE && outsideWindow(i));});
-
+        if(state[i] == AVAILABLE){
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
             #ifdef DEBUG
                 ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
             #endif
+
             // initialize header
             data[i].header.type = DATA_HEADER;
             data[i].header.seqNum = htonl(seqNum++);
@@ -141,10 +139,9 @@ void CircularBuffer::fillBuffer()
 
             // book keeping
             state[i] = FILLED;
-            lkFill.unlock();
-            senderCV.notify_all();
-
             bytesToTransfer -= packetLength;
+        }else{
+            break;
         }
     }
 }
@@ -187,7 +184,7 @@ void CircularBuffer::flushBuffer()
     }
 }
 
-void CircularBuffer::sendAck(msg_packet_t & packet)
+void CircularBuffer::sendAck()
 {
     ack_packet_t ack;
     ack.type = ACK_HEADER;
@@ -213,8 +210,8 @@ void CircularBuffer::sendAck(msg_packet_t & packet)
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
 {
-    ack_packet_t ack;
-    ack.type = ACK_HEADER;
+    // ack_packet_t ack;
+    // ack.type = ACK_HEADER;
     packet.header.seqNum = ntohl(packet.header.seqNum);
     size_t bufIdx = packet.header.seqNum % data.size();
 
@@ -234,7 +231,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 
     if(state[bufIdx] == WAITING){
         state[bufIdx] = RECEIVED;
-        sendAck(packet);
+        sendAck();
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
     }
