@@ -208,16 +208,12 @@ void TCP::ackManager()
 void TCP::processTO()
 {
 	#ifdef DEBUG
-		// afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n";
-		// afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl;
-		// afile << "EXPECTED: " << expectedAckSeqNum << endl;
-		afile << "\n\nWINDOW SIZE: " << buffer->windowSize << "\n\n";
-		afile.flush();
+		// afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n"; afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl; afile << "EXPECTED: " << expectedAckSeqNum << endl; afile << "\n\nWINDOW SIZE: " << buffer->windowSize << "\n\n"; afile.flush();
 	#endif
 
 	// Send Window Settings
 	sendState = AIMD;
-	// buffer->windowSize = max((buffer->windowSize)/2, MIN_WINDOW_SIZE);
+	buffer->windowSize = max((buffer->windowSize)/2, (uint32_t)MIN_WINDOW_SIZE);
 
 	// recalculate timing constraints
 	numRetransmissions++;
@@ -242,14 +238,8 @@ void TCP::processAcks(ack_process_t & pACK)
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % buffer->data.size());
 
 	#ifdef DEBUG
-		static auto last = std::chrono::high_resolution_clock::now();
-		auto current = std::chrono::high_resolution_clock::now();
-		afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n";
-		afile.flush();
-		last = current;
-		afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-		afile.flush();
-	#endif
+		static auto last = std::chrono::high_resolution_clock::now(); auto current = std::chrono::high_resolution_clock::now(); afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; afile.flush(); last = current; afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+	 #endif
 
 	if(expectedAckSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
@@ -359,12 +349,14 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK)
 	return 0;
 }
 
-
 void TCP::updateWindowSettings(ack_process_t & pACK)
 {
 	unique_lock<mutex> lkWin(buffer->idxLock);
 
-	// if(sendState == SLOW_START) buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
+	if((sendState == SLOW_START) || (sendState == AIMD && (pACK.ack.seqNum % buffer->windowSize) == (buffer->windowSize - 1))){
+		buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
+		// cout << "WINDOW SIZE: " << buffer->windowSize << "\n";
+	}
 
 	buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
 	buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
