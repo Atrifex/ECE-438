@@ -351,7 +351,7 @@ void TCP::updateWindowSettings(ack_process_t & pACK)
 {
 	unique_lock<mutex> lkWin(buffer->idxLock);
 
-	if(sendState == SLOW_START) buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
+	// if(sendState == SLOW_START) buffer->windowSize = min((buffer->windowSize + 1), (uint32_t) MAX_WINDOW_SIZE);
 
 	buffer->sIdx = (pACK.ack.seqNum + 1)% MAX_WINDOW_SIZE;
 	buffer->eIdx = (pACK.ack.seqNum + (buffer->windowSize))% MAX_WINDOW_SIZE;
@@ -481,11 +481,12 @@ void TCP::sendWindow()
 	while(state == ESTABLISHED){
 		unique_lock<mutex> lkWin(buffer->idxLock);
 		buffer->openWinCV.wait(lkWin, [=]{
-			return (expectedAckSeqNum == (lastPacketSent + 1));
+			return ((lastPacketSent - expectedAckSeqNum) != (buffer->windowSize - 1));
 		});
-		uint32_t i = buffer->sIdx; // protect with locks
 		uint32_t eIdx = buffer->eIdx;
 		lkWin.unlock();
+
+		uint32_t i = (lastPacketSent + 1) % MAX_WINDOW_SIZE; // protect with locks
 
 		for(;i != eIdx; i = (i + 1)%MAX_WINDOW_SIZE) {
 			unique_lock<mutex> lkSend(buffer->pktLocks[i]);

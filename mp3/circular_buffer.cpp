@@ -61,8 +61,61 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
 
 }
 
+bool CircularBuffer::initialFill()
+{
+    for(uint32_t i = 0; i < data.size(); i++) {
+        if(bytesToTransfer <= 0){
+            fileLoadCompleted = true;
+            return true;
+        }
+
+        unique_lock<mutex> lkFill(pktLocks[i]);
+        fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE);});
+
+        int packetLength = min((unsigned long long)payload, bytesToTransfer);
+
+        #ifdef DEBUG
+            ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
+        #endif
+        // initialize header
+        data[i].header.type = DATA_HEADER;
+        data[i].header.seqNum = htonl(seqNum++);
+        length[i] = packetLength + sizeof(msg_header_t);
+
+        // read data into buffer
+        read(sourcefd, data[i].msg, packetLength);
+
+        // book keeping
+        state[i] = FILLED;
+        lkFill.unlock();
+        senderCV.notify_one();
+
+        bytesToTransfer -= packetLength;
+    }
+
+    return false;
+}
+
+bool CircularBuffer::outsideWindow(uint32_t index)
+{
+
+    if((sIdx <= eIdx) && (index < sIdx || eIdx < index)){
+        return true;
+    }else if(eIdx <= sIdx && (index < sIdx && eIdx < index)){
+            return true;
+    }
+
+    return false;
+}
+
+
 void CircularBuffer::fillBuffer()
 {
+
+    if(initialFill() == true){
+        return;
+    }
+
     while(1){
         for(uint32_t i = 0; i < data.size(); i++) {
             if(bytesToTransfer <= 0){
@@ -71,7 +124,7 @@ void CircularBuffer::fillBuffer()
             }
 
             unique_lock<mutex> lkFill(pktLocks[i]);
-            fillerCV.wait(lkFill, [=]{return state[i] == AVAILABLE;});
+            fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE && outsideWindow(i));});
 
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
