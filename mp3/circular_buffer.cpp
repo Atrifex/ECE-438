@@ -69,8 +69,8 @@ bool CircularBuffer::initialFill()
             return true;
         }
 
-        unique_lock<mutex> lkFill(pktLocks[i]);
-        fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE);});
+        unique_lock<mutex> lkFill(idxLock);
+        openWinCV.wait(lkFill, [=]{return (state[i] == AVAILABLE);});
 
         int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
@@ -88,7 +88,7 @@ bool CircularBuffer::initialFill()
         // book keeping
         state[i] = FILLED;
         lkFill.unlock();
-        senderCV.notify_one();
+        openWinCV.notify_all();
 
         bytesToTransfer -= packetLength;
     }
@@ -142,7 +142,6 @@ void CircularBuffer::fillBuffer()
             // book keeping
             state[i] = FILLED;
             lkFill.unlock();
-            senderCV.notify_all();
 
             bytesToTransfer -= packetLength;
         }

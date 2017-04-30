@@ -261,7 +261,7 @@ unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackRecei
 	updateWindowSettings(pACK);
 
 	{
-		unique_lock<mutex> lkAck(buffer->pktLocks[ackReceivedIdx]);
+		unique_lock<mutex> lkAck(buffer->idxLock);
 		buffer->state[ackReceivedIdx] = AVAILABLE;
 
 		rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec;
@@ -272,7 +272,7 @@ unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackRecei
 		#endif
 
 		lkAck.unlock();
-		buffer->fillerCV.notify_one();
+		buffer->openWinCV.notify_all();
 	}
 
 	return rttSample;
@@ -288,7 +288,7 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 
 	// Handling missing acks based on cumulative out of order ACK
 	for(unsigned int i = (curExpectedAckSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
-		unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
+		unique_lock<mutex> lkOoO(buffer->idxLock);
 
 		#ifdef DEBUG
 		afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
@@ -300,11 +300,11 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 		}
 
 		lkOoO.unlock();
-		buffer->fillerCV.notify_one();
+		buffer->openWinCV.notify_all();
 	}
 
 	{  // handling acked message
-		unique_lock<mutex> lkAck(buffer->pktLocks[ackReceivedIdx]);
+		unique_lock<mutex> lkAck(buffer->idxLock);
 		buffer->state[ackReceivedIdx] = AVAILABLE;
 
 		#ifdef DEBUG
@@ -314,7 +314,7 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 
 		rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec;
 		lkAck.unlock();
-		buffer->fillerCV.notify_one();
+		buffer->openWinCV.notify_all();
 	}
 
 	return rttSample;
