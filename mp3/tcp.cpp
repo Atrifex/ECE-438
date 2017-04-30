@@ -254,10 +254,10 @@ void TCP::processAcks(ack_process_t & pACK)
 	if(expectedAckSeqNum == pACK.ack.seqNum){
 		rttSample = processExpecAck(pACK, ackReceivedIdx);
 		updateTimingConstraints(rttSample);
-	}else if((expectedAckSeqNum - 1) == pACK.ack.seqNum){
-		rttSample = processDupAck(pACK, ackReceivedIdx);
-	}else if(expectedAckSeqNum < pACK.ack.seqNum){
+	} else if(expectedAckSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
+	} else if((expectedAckSeqNum - 1) == pACK.ack.seqNum){
+		rttSample = processDupAck(pACK, ackReceivedIdx);
 	}
 }
 
@@ -285,41 +285,21 @@ unsigned long long TCP::processExpecAck(ack_process_t & pACK,  uint32_t ackRecei
 	return rttSample;
 }
 
-unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
-{
-	#ifdef DEBUG
-	afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-	afile.flush();
-	#endif
-
-	static uint32_t dupAckSeen = (0 - 1);
-	static uint8_t counter = 0;
-
-	if(dupAckSeen == pACK.ack.seqNum && counter == DUP_MAX_COUNTER){
-		resendWindow();
-		counter = 0;
-	}else if(dupAckSeen == pACK.ack.seqNum){
-		counter++;
-	}else{
-		counter = 0;
-	}
-
-	return 0;
-}
-
 unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
 {
 	unsigned long long rttSample;
 
+	uint32_t curExpectedAckSeqNum = expectedAckSeqNum;
+
 	updateWindowSettings(pACK);
 
 	// Handling missing acks based on cumulative out of order ACK
-	for(unsigned int i = (expectedAckSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
+	for(unsigned int i = (curExpectedAckSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
 		unique_lock<mutex> lkOoO(buffer->pktLocks[i]);
 
 		#ifdef DEBUG
-			afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-			afile.flush();
+		afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
 		#endif
 
 		if(buffer->state[i] == SENT){
@@ -335,8 +315,8 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 		buffer->state[ackReceivedIdx] = AVAILABLE;
 
 		#ifdef DEBUG
-			afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-			afile.flush();
+		afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
+		afile.flush();
 		#endif
 
 		rttSample = US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec;
@@ -346,6 +326,36 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 
 	return rttSample;
 }
+
+unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
+{
+	#ifdef DEBUG
+		afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
+		afile.flush();
+	#endif
+
+	static uint32_t dupAckLastSeen = (0 - 1);
+	static uint8_t counter  = 0;
+	static uint8_t counterPost = 0;
+
+	if(dupAckLastSeen == pACK.ack.seqNum){
+		counter++;
+		counterPost++;
+		if(counter == DUP_MAX_COUNTER){
+			resendWindow();
+		}else if(counterPost >= ((buffer->windowSize)/3)){
+			counterPost = 0;
+			resendWindow();
+		}
+	}else{
+		counter = 0;
+		counterPost = 0;
+		dupAckLastSeen = pACK.ack.seqNum;
+	}
+
+	return 0;
+}
+
 
 void TCP::updateWindowSettings(ack_process_t & pACK)
 {
@@ -373,7 +383,7 @@ bool TCP::resendTOWindow()
 	retransCheckTime.tv_usec = RETRANS_CHECK_TIME;
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &retransCheckTime, sizeof(retransCheckTime));
 
-	int j = (expectedAckSeqNum % buffer->data.size());
+	int j = buffer->sIdx;
 	for(unsigned int i = 0; i < buffer->data.size(); i++) {
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
@@ -392,7 +402,7 @@ bool TCP::resendTOWindow()
 				return false;
 			}
 		}
-		j = (j + 1) % buffer->data.size();
+		j = (j + 1) % MAX_WINDOW_SIZE;
 	}
 
 	return true;
@@ -400,8 +410,8 @@ bool TCP::resendTOWindow()
 
 void TCP::resendWindow()
 {
-	int j = (expectedAckSeqNum % buffer->data.size());
-	for(unsigned int i = 0; i < buffer->data.size(); i++) {
+	int j = buffer->sIdx;
+	for(unsigned int i = 0; i < buffer->windowSize; i++) {
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
 			#ifdef DEBUG
@@ -411,7 +421,7 @@ void TCP::resendWindow()
 			gettimeofday(&(buffer->timestamp[j]), 0);
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 		}
-		j = (j + 1) % buffer->data.size();
+		j = (j + 1) % MAX_WINDOW_SIZE;
 	}
 }
 

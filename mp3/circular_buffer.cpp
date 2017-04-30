@@ -176,7 +176,7 @@ void CircularBuffer::flushBuffer()
         if(state[sIdx] == RECEIVED){
             // write to file
             write(destfd, data[sIdx].msg, length[sIdx]);
-            recvfile << "Writing to file: " <<  data[sIdx].header.seqNum << "\n";
+            // recvfile << "Writing to file: " <<  data[sIdx].header.seqNum << "\n";
 
             // book keeping
             state[sIdx] = WAITING;
@@ -185,7 +185,33 @@ void CircularBuffer::flushBuffer()
             break;
         }
     }
+}
 
+void CircularBuffer::sendAck(msg_packet_t & packet)
+{
+    ack_packet_t ack;
+    ack.type = ACK_HEADER;
+
+    if(packet.header.seqNum == seqNum){
+        uint32_t j = seqNum%data.size();                // index for expected message
+        for(size_t i = 0; i < data.size(); i++) {
+            if(state[j] == RECEIVED){
+                seqNum++;
+                j = (j+1)%data.size();
+            } else{
+                break;
+            }
+        }
+    }
+
+    #ifdef DEBUG
+        recvfile << "Sending Ack for " <<  seqNum - 1 << " as received\n";
+        recvfile.flush();
+        // recvfile << "Setting: " <<  packet.header.seqNum << " as received\n";
+    #endif
+
+    ack.seqNum = htonl(seqNum - 1);
+    sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -193,28 +219,28 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     // Set up ack packet
     ack_packet_t ack;
     ack.type = ACK_HEADER;
-
     packet.header.seqNum = ntohl(packet.header.seqNum);
+    size_t bufIdx = packet.header.seqNum % data.size();
 
-    if(packet.header.seqNum != seqNum){
-        // send ACK the previous message
+    #ifdef DEBUG
+        // recvfile << "Packet Seen: " << packet.header.seqNum << endl;
+    #endif
+
+    if(packet.header.seqNum < seqNum){
+        #ifdef DEBUG
+            recvfile << "Sending Ack for " <<  seqNum - 1 << " as received\n";
+            recvfile.flush();
+            // recvfile << "Setting: " <<  packet.header.seqNum << " as received\n";
+        #endif
+        // send ACK for duplicate message
         ack.seqNum = htonl(seqNum - 1);
         sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         return;
-    }else{
-        // send ACK for expected message
-        ack.seqNum = htonl(seqNum);
-        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
-        seqNum++;
-        #ifdef DEBUG
-            recvfile << "Packet Seen: " << packet.header.seqNum << endl;
-        #endif
     }
 
-    size_t bufIdx = packet.header.seqNum % data.size();
     if(state[bufIdx] == WAITING){
-        recvfile << "Setting: " <<  packet.header.seqNum << " as received\n";
         state[bufIdx] = RECEIVED;
+        sendAck(packet);
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
     }

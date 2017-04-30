@@ -21,6 +21,7 @@ class CircularBuffer
         // receiver member function
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
         void flushBuffer();
+        void sendAck(msg_packet_t & packet);
 
         void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
 
