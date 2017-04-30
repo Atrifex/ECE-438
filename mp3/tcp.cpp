@@ -257,7 +257,7 @@ void TCP::processAcks(ack_process_t & pACK)
 	} else if(expectedAckSeqNum < pACK.ack.seqNum){
 		rttSample = processOoOAck(pACK, ackReceivedIdx);
 	} else if(expectedAckSeqNum == pACK.ack.seqNum + 1){
-		rttSample = processDupAck(pACK, ackReceivedIdx);
+		rttSample = processDupAck(pACK);
 	}
 }
 
@@ -327,7 +327,7 @@ unsigned long long TCP::processOoOAck(ack_process_t & pACK,  uint32_t ackReceive
 	return rttSample;
 }
 
-unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx)
+unsigned long long TCP::processDupAck(ack_process_t & pACK)
 {
 	#ifdef DEBUG
 		afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
@@ -340,12 +340,15 @@ unsigned long long TCP::processDupAck(ack_process_t & pACK,  uint32_t ackReceive
 
 	if(dupAckLastSeen == pACK.ack.seqNum){
 		counter++;
-		counterPost++;
 		if(counter == DUP_MAX_COUNTER){
+			counterPost = 0;
+			counterPost++;
 			resendWindow();
 		}else if(counterPost >= ((buffer->windowSize)/3)){
 			counterPost = 0;
 			resendWindow();
+		}else{
+			counterPost++;
 		}
 	}else{
 		counter = 0;
@@ -410,13 +413,16 @@ bool TCP::resendTOWindow()
 
 void TCP::resendWindow()
 {
+	#ifdef DEBUG
+	afile << "RESENDING WINDOW TITLE:\n"; afile.flush();
+	#endif
+
 	int j = buffer->sIdx;
-	for(unsigned int i = 0; i < buffer->windowSize; i++) {
+	for(unsigned int i = 0; i < (buffer->windowSize)/2; i++) {
 		unique_lock<mutex> lkTO(buffer->pktLocks[j]);
 		if(buffer->state[j] == SENT){
 			#ifdef DEBUG
-			afile << "Retransmit (DUPLICATE ACK): " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl;
-			afile.flush();
+			afile << "Retransmit (DUPLICATE ACK): " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
 			#endif
 			gettimeofday(&(buffer->timestamp[j]), 0);
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
@@ -491,7 +497,7 @@ void TCP::sendWindow()
 	while(state == ESTABLISHED){
 		unique_lock<mutex> lkWin(buffer->idxLock);
 		buffer->openWinCV.wait(lkWin, [=]{
-			return ((lastPacketSent - expectedAckSeqNum) != (buffer->windowSize - 1));
+			return ((uint32_t)(lastPacketSent - expectedAckSeqNum) != (buffer->windowSize - 1));
 		});
 		uint32_t eIdx = buffer->eIdx;
 		lkWin.unlock();

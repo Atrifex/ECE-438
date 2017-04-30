@@ -44,7 +44,7 @@ class TCP
         void processTO();
         void processAcks(ack_process_t & pACK);
         unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
-        unsigned long long processDupAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
+        unsigned long long processDupAck(ack_process_t & pACK);
         unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
 
 
