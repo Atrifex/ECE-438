@@ -52,7 +52,7 @@
 #include <list>
 #include <deque>
 #include <cmath>
-
+#include <stdint.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -109,7 +109,7 @@ typedef struct {
 typedef struct {
     uint8_t type;
     int seqNum;
-    uint32_t flags;
+    uint64_t flags;
 } ack_packet_wf_t;
 
 typedef struct {

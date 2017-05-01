@@ -48,7 +48,7 @@
 // Duplicate
 #define DUP_MAX_COUNTER             (3)
 #define DUP_MSG_MAX                 (2)
-#define FLAG_SIZE                   (32)
+#define FLAG_SIZE                   (64)
 #define CS_ACK_THRESHOLD            (8)
 
 #endif

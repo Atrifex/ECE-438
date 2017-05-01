@@ -360,8 +360,8 @@ void TCP::processSExpecAck(ack_process_t & pACK)
 	buffer->state[ackReceivedIdx] = AVAILABLE;
 	rttSample = (US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec);
 
-	uint32_t mask = 1;
-	uint32_t flags = ntohl(pACK.ack.flags);
+	uint64_t mask = 1;
+	uint64_t flags = be64toh(pACK.ack.flags);
 	uint32_t j = (ackReceivedIdx + 1)%BUFFER_SIZE;
 	for(size_t i = 0; i < FLAG_SIZE; i++) {
 		if(flags & mask){
@@ -382,8 +382,8 @@ void TCP::processSDupAck(ack_process_t & pACK)
 	static uint8_t counterPost = 0;
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % BUFFER_SIZE);
 
-	uint32_t mask = 1;
-	uint32_t flags = ntohl(pACK.ack.flags);
+	uint64_t mask = 1;
+	uint64_t flags = be64toh(pACK.ack.flags);
 	uint32_t j = (ackReceivedIdx + 1)%BUFFER_SIZE;
 	for(size_t i = 0; i < FLAG_SIZE; i++) {
 		if(flags & mask){
@@ -434,8 +434,8 @@ void TCP::processSOoOAck(ack_process_t & pACK)
 	// handling acked message
 	buffer->state[ackReceivedIdx] = AVAILABLE;
 
-	uint32_t mask = 1;
-	uint32_t flags = ntohl(pACK.ack.flags);
+	uint64_t mask = 1;
+	uint64_t flags = be64toh(pACK.ack.flags);
 	uint32_t j = (ackReceivedIdx + 1)%BUFFER_SIZE;
 	for(size_t i = 0; i < FLAG_SIZE; i++) {
 		if(flags & mask){

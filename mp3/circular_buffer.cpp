@@ -184,10 +184,10 @@ void CircularBuffer::flushBuffer()
     }
 }
 
-uint32_t CircularBuffer::createFlags(uint32_t & counter)
+uint64_t CircularBuffer::createFlags(uint32_t & counter)
 {
-    uint32_t flags = 0;
-    uint32_t mask = 1;
+    uint64_t flags = 0;
+    uint64_t mask = 1;
     counter = 0;
 
     uint32_t j = seqNum%data.size();                // index for expected message
@@ -223,12 +223,12 @@ void CircularBuffer::sendAck()
     #endif
 
     uint32_t counter;
-    uint32_t flags = createFlags(counter);
+    uint64_t flags = createFlags(counter);
     if(counter >= CS_ACK_THRESHOLD){
         ack_packet_wf_t ack_wf;
         ack_wf.type = ACK_HEADER_W_FLAGS;
         ack_wf.seqNum = htonl(seqNum - 1);
-        ack_wf.flags = htonl(flags);
+        ack_wf.flags = htobe64(flags);
         sendto(ackfd, (char *)&ack_wf, sizeof(ack_packet_wf_t), 0, &ackAddr, ackAddrLen);
     }else{
         ack_packet_t ack;

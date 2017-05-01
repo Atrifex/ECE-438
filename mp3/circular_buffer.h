@@ -22,7 +22,7 @@ class CircularBuffer
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
         void flushBuffer();
         void sendAck();
-        uint32_t createFlags(uint32_t & counter);
+        uint64_t createFlags(uint32_t & counter);
 
         void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
 
