@@ -54,29 +54,18 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = bytesToSend;
 
     gettimeofday(&start, 0);
-
-    #ifdef DEBUG
-        ffile.open("fillLog", std::ios::out);
-    #endif
-
 }
 
-bool CircularBuffer::initialFill()
+void CircularBuffer::initialFill()
 {
     for(uint32_t i = 0; i < data.size(); i++) {
         if(bytesToTransfer <= 0){
             fileLoadCompleted = true;
-            return true;
+            return;
         }
-
-        unique_lock<mutex> lkFill(pktLocks[i]);
-        fillerCV.wait(lkFill, [=]{return (state[i] == AVAILABLE);});
 
         int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
-        #ifdef DEBUG
-            ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
-        #endif
         // initialize header
         data[i].header.type = DATA_HEADER;
         data[i].header.seqNum = htonl(seqNum++);
@@ -87,22 +76,16 @@ bool CircularBuffer::initialFill()
 
         // book keeping
         state[i] = FILLED;
-        lkFill.unlock();
-        senderCV.notify_one();
-
         bytesToTransfer -= packetLength;
     }
-
-    return false;
 }
 
 bool CircularBuffer::outsideWindow(uint32_t index)
 {
-
     if((sIdx <= eIdx) && (index < sIdx || eIdx < index)){
         return true;
     }else if(eIdx <= sIdx && (index < sIdx && eIdx < index)){
-            return true;
+        return true;
     }
 
     return false;
@@ -111,26 +94,16 @@ bool CircularBuffer::outsideWindow(uint32_t index)
 
 void CircularBuffer::fillBuffer()
 {
+    static uint32_t i = 0;
+    for( ; i < data.size(); i = (i + 1)%BUFFER_SIZE) {
+        if(bytesToTransfer <= 0){
+            fileLoadCompleted = true;
+            return;
+        }
 
-    if(initialFill() == true){
-        return;
-    }
-
-    while(1){
-        for(uint32_t i = 0; i < data.size(); i++) {
-            if(bytesToTransfer <= 0){
-                fileLoadCompleted = true;
-                return;
-            }
-
-            unique_lock<mutex> lkFill(idxLock);
-            openWinCV.wait(lkFill, [=]{return (state[i] == AVAILABLE && outsideWindow(i));});
-
+        if(state[i] == AVAILABLE){
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
 
-            #ifdef DEBUG
-                ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
-            #endif
             // initialize header
             data[i].header.type = DATA_HEADER;
             data[i].header.seqNum = htonl(seqNum++);
@@ -141,10 +114,9 @@ void CircularBuffer::fillBuffer()
 
             // book keeping
             state[i] = FILLED;
-            lkFill.unlock();
-            senderCV.notify_all();
-
             bytesToTransfer -= packetLength;
+        }else{
+            break;
         }
     }
 }
@@ -164,10 +136,6 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 
     seqNum = 0;
     sIdx = 0;
-
-    #ifdef DEBUG
-        recvfile.open("recvLog", std::ios::out);
-    #endif
 }
 
 void CircularBuffer::flushBuffer()
@@ -180,35 +148,60 @@ void CircularBuffer::flushBuffer()
 
             // book keeping
             state[sIdx] = WAITING;
-            sIdx = (sIdx+1)%data.size();
+            sIdx = (sIdx+1)%BUFFER_SIZE;
         } else{
             break;
         }
     }
 }
 
-void CircularBuffer::sendAck(msg_packet_t & packet)
+uint64_t CircularBuffer::createFlags(uint32_t & counter)
 {
-    ack_packet_t ack;
-    ack.type = ACK_HEADER;
+    uint64_t flags = 0;
+    uint64_t mask = 1;
+    counter = 0;
 
     uint32_t j = seqNum%data.size();                // index for expected message
-    for(size_t i = 0; i < data.size(); i++) {
+    for(size_t i = 0; i < FLAG_SIZE; i++) {
+        if(state[j] == RECEIVED){
+            flags = flags | mask;
+            counter++;
+        }
+        mask = mask << 1;
+        j = (j + 1)%BUFFER_SIZE;
+    }
+
+    return flags;
+}
+
+void CircularBuffer::sendAck()
+{
+
+    uint32_t j = seqNum%BUFFER_SIZE;                // index for expected message
+    for(size_t i = 0; i < BUFFER_SIZE; i++) {
         if(state[j] == RECEIVED){
             seqNum++;
-            j = (j+1)%data.size();
+            j = (j+1)%BUFFER_SIZE;
         } else{
             break;
         }
     }
 
-    #ifdef DEBUG
-        recvfile << "Sending Ack for " <<  seqNum - 1 << " as received\n";
-        recvfile.flush();
-    #endif
+    uint32_t counter;
+    uint64_t flags = createFlags(counter);
+    if(counter >= CS_ACK_THRESHOLD){
+        ack_packet_wf_t ack_wf;
+        ack_wf.type = ACK_HEADER_W_FLAGS;
+        ack_wf.seqNum = htonl(seqNum - 1);
+        ack_wf.flags = htobe64(flags);
+        sendto(ackfd, (char *)&ack_wf, sizeof(ack_packet_wf_t), 0, &ackAddr, ackAddrLen);
+    }else{
+        ack_packet_t ack;
+        ack.type = ACK_HEADER;
+        ack.seqNum = htonl(seqNum - 1);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+    }
 
-    ack.seqNum = htonl(seqNum - 1);
-    sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
@@ -218,15 +211,9 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     packet.header.seqNum = ntohl(packet.header.seqNum);
     size_t bufIdx = packet.header.seqNum % data.size();
 
-    #ifdef DEBUG
-        recvfile << "Packet Seen: " << packet.header.seqNum << endl;
-    #endif
-
-    // static counter = 0;
-
     if(packet.header.seqNum == seqNum - 1){
-        // ack.seqNum = htonl(seqNum - 1);
-        // sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+        ack.seqNum = htonl(seqNum - 1);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         return;
     }else if(packet.header.seqNum < seqNum){
         return;
@@ -234,7 +221,7 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
 
     if(state[bufIdx] == WAITING){
         state[bufIdx] = RECEIVED;
-        sendAck(packet);
+        sendAck();
         data[bufIdx] = packet;
         length[bufIdx] = packetLength - sizeof(msg_header_t);
     }

@@ -52,7 +52,7 @@
 #include <list>
 #include <deque>
 #include <cmath>
-
+#include <stdint.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -105,8 +105,15 @@ typedef struct {
     int seqNum;
 } ack_packet_t;
 
+#pragma pack(1)
 typedef struct {
-    ack_packet_t ack;
+    uint8_t type;
+    int seqNum;
+    uint64_t flags;
+} ack_packet_wf_t;
+
+typedef struct {
+    ack_packet_wf_t ack;
     struct timeval time;
 } ack_process_t;
 

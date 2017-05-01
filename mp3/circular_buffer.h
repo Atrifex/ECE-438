@@ -14,19 +14,21 @@ class CircularBuffer
         ~CircularBuffer();
 
         // sender member function
-        bool initialFill();
+        void initialFill();
         void fillBuffer();
         bool outsideWindow(uint32_t index);
 
         // receiver member function
         void storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength);
         void flushBuffer();
-        void sendAck(msg_packet_t & packet);
+        void sendAck();
+        uint64_t createFlags(uint32_t & counter);
 
         void setSocketAddrInfo(int sockfd, struct sockaddr senderAddr, socklen_t senderAddrLen);
 
         // member variables
-        mutex idxLock;
+        condition_variable openWinCV;
+        mutex windowLock;
         uint32_t sIdx, eIdx, windowSize;
         unsigned int payload;
 
@@ -38,10 +40,10 @@ class CircularBuffer
         vector<struct timeval> timestamp;
         vector<msg_packet_t> data;
         vector<uint32_t> length;
+
         mutex pktLocks[BUFFER_SIZE];
         condition_variable senderCV;
         condition_variable fillerCV;
-        condition_variable openWinCV;
 
         // Meta data
         unsigned long long int bytesToTransfer;
@@ -52,9 +54,6 @@ class CircularBuffer
         // debuging
         unsigned long long timeSinceStart();
         struct timeval start;
-
-        ofstream ffile;
-        ofstream recvfile;
 };
 
 
