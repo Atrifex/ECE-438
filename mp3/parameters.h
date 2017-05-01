@@ -21,6 +21,7 @@
 #define FIN_ACK_HEADER              (0x05)
 #define DATA_HEADER                 (0x06)
 #define DATA_RETRANS_HEADER         (0x07)
+#define ACK_HEADER_W_FLAGS          (0x08)
 
 // Timing Information
 #define START_TIME_VEC_SIZE         (100)
@@ -33,8 +34,8 @@
 
 // SRTT
 #define ALPHA                       ((double)0.125)                   // (1/8) is goood, acts like a low-pass filter
-#define ALPHA_TO_SCALAR             ((double)0)
-#define ALPHA_MAX                   ((double)0.75)
+#define ALPHA_TO_SCALAR             ((double)0.05)
+#define ALPHA_MAX                   ((double)0.50)
 
 // RTO
 #define MAX_SRTT_WEIGHT             ((double)3.0)                     // good between 2 - 4  --> questions how much you can trust initial results
@@ -46,5 +47,8 @@
 
 // Duplicate
 #define DUP_MAX_COUNTER             (3)
+#define DUP_MSG_MAX                 (2)
+#define FLAG_SIZE                   (32)
+#define CS_ACK_THRESHOLD            (8)
 
 #endif

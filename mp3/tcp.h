@@ -43,10 +43,16 @@ class TCP
         bool ackManager();
         void processTO();
         void processAcks(ack_process_t & pACK);
-        unsigned long long processExpecAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
-        unsigned long long processDupAck(ack_process_t & pACK);
-        unsigned long long processOoOAck(ack_process_t & pACK,  uint32_t ackReceivedIdx);
 
+        void processCAck(ack_process_t & pACK);
+        void processCExpecAck(ack_process_t & pACK);
+        void processCDupAck(ack_process_t & pACK);
+        void processCOoOAck(ack_process_t & pACK);
+
+        void processSAck(ack_process_t & pACK);
+        void processSExpecAck(ack_process_t & pACK);
+        void processSDupAck(ack_process_t & pACK);
+        void processSOoOAck(ack_process_t & pACK);
 
         // Fast recover and fast retransmit functions
         void resendTOWindow();
@@ -72,8 +78,6 @@ class TCP
         double rtoNext;
         double srtt;
         deque<unsigned long long> rttHistory;               // Basically a queue that we can itterate through
-        unsigned long long rttRunningTotal;
-        unsigned long long numRTTTotal;
         double alpha;
 
         // Book keeping

@@ -177,41 +177,72 @@ void CircularBuffer::flushBuffer()
 
             // book keeping
             state[sIdx] = WAITING;
-            sIdx = (sIdx+1)%data.size();
+            sIdx = (sIdx+1)%BUFFER_SIZE;
         } else{
             break;
         }
     }
 }
 
-void CircularBuffer::sendAck()
+uint32_t CircularBuffer::createFlags(uint32_t & counter)
 {
-    ack_packet_t ack;
-    ack.type = ACK_HEADER;
+    uint32_t flags = 0;
+    uint32_t mask = 1;
+    counter = 0;
 
     uint32_t j = seqNum%data.size();                // index for expected message
-    for(size_t i = 0; i < data.size(); i++) {
+    for(size_t i = 0; i < FLAG_SIZE; i++) {
+        if(state[j] == RECEIVED){
+            flags = flags | mask;
+            counter++;
+        }
+        mask = mask << 1;
+        j = (j + 1)%BUFFER_SIZE;
+    }
+
+    return flags;
+}
+
+void CircularBuffer::sendAck()
+{
+
+    uint32_t j = seqNum%BUFFER_SIZE;                // index for expected message
+    for(size_t i = 0; i < BUFFER_SIZE; i++) {
         if(state[j] == RECEIVED){
             seqNum++;
-            j = (j+1)%data.size();
+            j = (j+1)%BUFFER_SIZE;
         } else{
             break;
         }
     }
+
 
     #ifdef DEBUG
         recvfile << "Sending Ack for " <<  seqNum - 1 << " as received\n";
         recvfile.flush();
     #endif
 
-    ack.seqNum = htonl(seqNum - 1);
-    sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+    uint32_t counter;
+    uint32_t flags = createFlags(counter);
+    if(counter >= CS_ACK_THRESHOLD){
+        ack_packet_wf_t ack_wf;
+        ack_wf.type = ACK_HEADER_W_FLAGS;
+        ack_wf.seqNum = htonl(seqNum - 1);
+        ack_wf.flags = htonl(flags);
+        sendto(ackfd, (char *)&ack_wf, sizeof(ack_packet_wf_t), 0, &ackAddr, ackAddrLen);
+    }else{
+        ack_packet_t ack;
+        ack.type = ACK_HEADER;
+        ack.seqNum = htonl(seqNum - 1);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+    }
+
 }
 
 void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetLength)
 {
-    // ack_packet_t ack;
-    // ack.type = ACK_HEADER;
+    ack_packet_t ack;
+    ack.type = ACK_HEADER;
     packet.header.seqNum = ntohl(packet.header.seqNum);
     size_t bufIdx = packet.header.seqNum % data.size();
 
@@ -219,11 +250,9 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
         recvfile << "Packet Seen: " << packet.header.seqNum << endl;
     #endif
 
-    // static counter = 0;
-
     if(packet.header.seqNum == seqNum - 1){
-        // ack.seqNum = htonl(seqNum - 1);
-        // sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
+        ack.seqNum = htonl(seqNum - 1);
+        sendto(ackfd, (char *)&ack, sizeof(ack_packet_t), 0, &ackAddr, ackAddrLen);
         return;
     }else if(packet.header.seqNum < seqNum){
         return;
