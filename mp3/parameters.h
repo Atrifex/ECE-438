@@ -10,7 +10,7 @@
 #define MIN_WINDOW_SIZE             (10)
 
 #define INIT_RTO                    (80000)     // in microseconds
-#define FIN_TO                      (200000)    // in microseconds
+#define FIN_TO                      (300000)    // in microseconds
 #define MAX_RTO                     (2000000)   // in microseconds
 
 // Header Flags

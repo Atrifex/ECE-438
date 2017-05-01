@@ -255,7 +255,7 @@ void TCP::processAcks(ack_process_t & pACK)
 void TCP::processCAck(ack_process_t & pACK)
 {
 	#ifdef DEBUG
-		static auto last = std::chrono::high_resolution_clock::now(); auto current = std::chrono::high_resolution_clock::now(); afile << "TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; afile.flush(); last = current; afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+		static auto last = std::chrono::high_resolution_clock::now(); auto current = std::chrono::high_resolution_clock::now(); afile << "C ACK TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; afile.flush(); last = current; afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
 	 #endif
 	if(expectedAckSeqNum == pACK.ack.seqNum){
 		processCExpecAck(pACK);
@@ -272,7 +272,7 @@ void TCP::processCExpecAck(ack_process_t & pACK)
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % BUFFER_SIZE);
 
 	#ifdef DEBUG
-		afile << "ACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+		afile << "CACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
 	 #endif
 
 	buffer->state[ackReceivedIdx] = AVAILABLE;
@@ -353,6 +353,10 @@ void TCP::processSExpecAck(ack_process_t & pACK)
 	unsigned long long rttSample;
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % BUFFER_SIZE);
 
+	#ifdef DEBUG
+		afile << "SACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+	 #endif
+
 	buffer->state[ackReceivedIdx] = AVAILABLE;
 	rttSample = (US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec);
 
@@ -417,14 +421,14 @@ void TCP::processSOoOAck(ack_process_t & pACK)
 	// Handling missing acks based on cumulative out of order ACK
 	for(unsigned int i = (expectedAckSeqNum % BUFFER_SIZE); i != (ackReceivedIdx); i = ((i + 1) % BUFFER_SIZE)){
 		#ifdef DEBUG
-		  	afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+		  	afile << "ACK SELECTIVE OUT OF ORDER: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
 	 	 #endif
 		if(buffer->state[i] == SENT){
 			buffer->state[i] = AVAILABLE;
 		}
 	}
 	#ifdef DEBUG
-		afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+			afile << "ACK SELECTIVE OUT OF ORDER (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
       #endif
 
 	// handling acked message
@@ -473,7 +477,7 @@ void TCP::resendTOWindow()
 	for(unsigned int i = 0; i < buffer->data.size(); i++) {
 		if(buffer->state[j] == SENT){
 			#ifdef DEBUG
-				afile << "Retransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
+				afile << "TORetransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
 			#endif
 
 			gettimeofday(&(buffer->timestamp[j]), 0);
