@@ -99,11 +99,6 @@ TCP::TCP(char * hostname, char * hostUDPport)
 	state = CLOSED;
 	sendState = WAITING_TO_SEND;
 	alpha = ALPHA;
-
-	#ifdef DEBUG
-		sfile.open("sendLog", std::ios::out); afile.open("ackLog", std::ios::out); rttfile.open("rttLog", std::ios::out);
-	#endif
-
 }
 
 void TCP::senderSetupConnection()
@@ -154,8 +149,6 @@ void TCP::reliableSend(char * filename, unsigned long long int bytesToTransfer)
 		}
 	}
 
-	afile << "Started closing sequence\n\n";
-
 	state = CLOSING;
 
 	// tear down TCP connection
@@ -177,8 +170,6 @@ void TCP::senderTearDownConnection()
 	ack_packet_t ack;
 	ack.type = ACK_HEADER;
 	ack.seqNum = receiveEndFinAck();
-
-	afile << "Received FIN ACK\n\n";
 
 	// send ACK
 	sendto(sockfd, (char *)&ack, sizeof(ack_packet_t), 0, &receiverAddr, receiverAddrLen);
@@ -218,10 +209,6 @@ bool TCP::ackManager()
 
 void TCP::processTO()
 {
-	#ifdef DEBUG
-		afile << "\n\nTIME OUT OCCURED: " << US_PER_SEC*rto.tv_sec + rto.tv_usec << "\n\n"; afile << "NUMBER RETRANSMIT: " << numRetransmissions + 1 << endl; afile << "EXPECTED: " << expectedAckSeqNum << endl; afile << "\n\nWINDOW SIZE: " << buffer->windowSize << "\n\n"; afile.flush();
- 	 #endif
-
 	// Send Window Settings
 	sendState = AIMD;
 	buffer->windowSize = max((buffer->windowSize)/2, (uint32_t)MIN_WINDOW_SIZE);
@@ -254,9 +241,6 @@ void TCP::processAcks(ack_process_t & pACK)
 
 void TCP::processCAck(ack_process_t & pACK)
 {
-	#ifdef DEBUG
-		static auto last = std::chrono::high_resolution_clock::now(); auto current = std::chrono::high_resolution_clock::now(); afile << "C ACK TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; afile.flush(); last = current; afile << "expected: " << expectedAckSeqNum << ", saw: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-	 #endif
 	if(expectedAckSeqNum == pACK.ack.seqNum){
 		processCExpecAck(pACK);
 	} else if(expectedAckSeqNum < pACK.ack.seqNum){
@@ -271,10 +255,6 @@ void TCP::processCExpecAck(ack_process_t & pACK)
 	unsigned long long rttSample;
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % BUFFER_SIZE);
 
-	#ifdef DEBUG
-		afile << "CACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-	 #endif
-
 	buffer->state[ackReceivedIdx] = AVAILABLE;
 	rttSample = (US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec);
 
@@ -288,16 +268,10 @@ void TCP::processCOoOAck(ack_process_t & pACK)
 
 	// Handling missing acks based on cumulative out of order ACK
 	for(unsigned int i = (expectedAckSeqNum % buffer->data.size()); i != (ackReceivedIdx); i = ((i + 1) % buffer->data.size())){
-		#ifdef DEBUG
-		afile << "ACK Out of order process: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-		#endif
 		if(buffer->state[i] == SENT){
 			buffer->state[i] = AVAILABLE;
 		}
 	}
-	#ifdef DEBUG
-	afile << "ACK Out of order process (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-	#endif
 
 	// handling acked message
 	buffer->state[ackReceivedIdx] = AVAILABLE;
@@ -307,11 +281,6 @@ void TCP::processCOoOAck(ack_process_t & pACK)
 
 void TCP::processCDupAck(ack_process_t & pACK)
 {
-	#ifdef DEBUG
-	afile << "\n\nDUPLICATE ACK: " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << "\n\n";
-	afile.flush();
-	#endif
-
 	static int dupAckLastSeen = -1;
 	static uint8_t counter  = 0;
 	static uint8_t counterPost = 0;
@@ -352,10 +321,6 @@ void TCP::processSExpecAck(ack_process_t & pACK)
 {
 	unsigned long long rttSample;
 	uint32_t ackReceivedIdx = (pACK.ack.seqNum % BUFFER_SIZE);
-
-	#ifdef DEBUG
-		afile << "SACK in-order: " << ntohl(buffer->data[ackReceivedIdx].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-	 #endif
 
 	buffer->state[ackReceivedIdx] = AVAILABLE;
 	rttSample = (US_PER_SEC*(pACK.time.tv_sec - buffer->timestamp[ackReceivedIdx].tv_sec) + pACK.time.tv_usec - buffer->timestamp[ackReceivedIdx].tv_usec);
@@ -420,16 +385,10 @@ void TCP::processSOoOAck(ack_process_t & pACK)
 
 	// Handling missing acks based on cumulative out of order ACK
 	for(unsigned int i = (expectedAckSeqNum % BUFFER_SIZE); i != (ackReceivedIdx); i = ((i + 1) % BUFFER_SIZE)){
-		#ifdef DEBUG
-		  	afile << "ACK SELECTIVE OUT OF ORDER: " << ntohl(buffer->data[i].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-	 	 #endif
 		if(buffer->state[i] == SENT){
 			buffer->state[i] = AVAILABLE;
 		}
 	}
-	#ifdef DEBUG
-			afile << "ACK SELECTIVE OUT OF ORDER (received): " << pACK.ack.seqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-      #endif
 
 	// handling acked message
 	buffer->state[ackReceivedIdx] = AVAILABLE;
@@ -476,10 +435,6 @@ void TCP::resendTOWindow()
 	int j = buffer->sIdx;
 	for(unsigned int i = 0; i < buffer->data.size(); i++) {
 		if(buffer->state[j] == SENT){
-			#ifdef DEBUG
-				afile << "TORetransmit: " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-			#endif
-
 			gettimeofday(&(buffer->timestamp[j]), 0);
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 
@@ -493,16 +448,9 @@ void TCP::resendTOWindow()
 
 void TCP::resendWindow()
 {
-	#ifdef DEBUG
-		afile << "RESENDING WINDOW TITLE:\n"; afile.flush();
-	#endif
-
 	int j = buffer->sIdx;
 	for(unsigned int i = 0; i < (buffer->windowSize)/2; i++) {
 		if(buffer->state[j] == SENT){
-			#ifdef DEBUG
-			afile << "Retransmit (DUPLICATE ACK): " <<  ntohl(buffer->data[j].header.seqNum) << ", TIME: " << buffer->timeSinceStart() << "us" << endl; afile.flush();
-			#endif
 			gettimeofday(&(buffer->timestamp[j]), 0);
 			sendto(sockfd, (char *)&(buffer->data[j]), buffer->length[j], 0, &receiverAddr, receiverAddrLen);
 		}
@@ -530,10 +478,6 @@ void TCP::updateTimingConstraints(unsigned long long rttSample)
 	rtoNext = min(rtoNext, (double)MAX_RTO);
 	rto.tv_sec = ((unsigned long long)rtoNext)/(US_PER_SEC);
 	rto.tv_usec = ((unsigned long long)rtoNext)%(US_PER_SEC);
-
-	#ifdef DEBUG
-		rttfile << "SRTT weight: " << srttWeight() << endl; rttfile << "STD weight: " << stdWeight()  << endl << endl; rttfile << "History Size: " << rttHistory.size() << endl; rttfile << "Expected: " << expectedAckSeqNum << ", TIME: " << buffer->timeSinceStart() << "us" << endl; rttfile << "StdDev: " << stdDevRTT() << endl; rttfile << "RTT in microseconds: " << rttHistory.back() << endl; rttfile << "RTO in microseconds: " << rtoNext << "\n\n";
-	  #endif
 }
 
 double TCP::stdDevRTT()
@@ -565,18 +509,11 @@ inline double TCP::srttWeight(){
 
 void TCP::sendWindow()
 {
-	#ifdef DEBUG
-		auto last = std::chrono::high_resolution_clock::now();
-	#endif
-
 	uint32_t eIdx = buffer->eIdx;
 	uint32_t i = (lastPacketSent + 1) % BUFFER_SIZE;
 
 	for(;i != eIdx; i = (i + 1)%BUFFER_SIZE){
 		if(buffer->state[i] == FILLED){
-			#ifdef DEBUG
-			const auto current = std::chrono::high_resolution_clock::now(); sfile << ntohl(buffer->data[i].header.seqNum); sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; sfile.flush(); last = current;
-			#endif
 			buffer->state[i] = SENT;
 
 			gettimeofday(&(buffer->timestamp[i]), 0);
@@ -589,11 +526,6 @@ void TCP::sendWindow()
 	// edge case of i == eIdx
 	if(buffer->state[i] == FILLED){
 		buffer->state[i] = SENT;
-
-		#ifdef DEBUG
-			const auto current = std::chrono::high_resolution_clock::now(); sfile << ntohl(buffer->data[i].header.seqNum); sfile << " - TIME diff trans: " << std::chrono::duration<double, std::milli>(current - last).count() << " milliseconds.\n"; sfile.flush(); last = current;
-		#endif
-
 		gettimeofday(&(buffer->timestamp[i]), 0);
 		sendto(sockfd, (char *)&(buffer->data[i]), buffer->length[i], 0, &receiverAddr, receiverAddrLen);
 
@@ -787,13 +719,6 @@ int TCP::receiveStartSynAck(struct timeval synZeroTime)
 			initialRTO = min(2*initialRTT, (unsigned long long)INIT_RTO);
 			rto.tv_sec = initialRTO/US_PER_SEC;
 			rto.tv_usec = initialRTO%US_PER_SEC;
-
-			#ifdef DEBUG
-				rttfile << "SeqNum: " <<  ntohl(syn_ack.seqNum) << endl;
-				rttfile << "Initial RTT in microseconds: " << rttHistory[0] << endl;
-				rttfile << "Initial RTO secs: " << rto.tv_sec << endl;
-				rttfile << "Initial RTO microseconds: " << rto.tv_usec << endl;
-			#endif
 
 			return syn_ack.seqNum;
 		}

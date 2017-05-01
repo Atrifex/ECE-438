@@ -54,11 +54,6 @@ CircularBuffer::CircularBuffer(int size, char * filename, unsigned long long int
     bytesToTransfer = bytesToSend;
 
     gettimeofday(&start, 0);
-
-    #ifdef DEBUG
-        ffile.open("fillLog", std::ios::out);
-    #endif
-
 }
 
 void CircularBuffer::initialFill()
@@ -70,10 +65,6 @@ void CircularBuffer::initialFill()
         }
 
         int packetLength = min((unsigned long long)payload, bytesToTransfer);
-
-        #ifdef DEBUG
-            ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
-        #endif
 
         // initialize header
         data[i].header.type = DATA_HEADER;
@@ -91,20 +82,11 @@ void CircularBuffer::initialFill()
 
 bool CircularBuffer::outsideWindow(uint32_t index)
 {
-    #ifdef DEBUG
-        // ffile << "Top of outside window function.\n\n"; ffile.flush();
-        ffile << "Index: " <<  index <<  ", start: " << sIdx << ", end: " << eIdx << "\n"; ffile.flush();
-    #endif
-
     if((sIdx <= eIdx) && (index < sIdx || eIdx < index)){
         return true;
     }else if(eIdx <= sIdx && (index < sIdx && eIdx < index)){
         return true;
     }
-
-    #ifdef DEBUG
-        ffile << "Somehow inside window.\n\n"; ffile.flush();
-    #endif
 
     return false;
 }
@@ -116,18 +98,11 @@ void CircularBuffer::fillBuffer()
     for( ; i < data.size(); i = (i + 1)%BUFFER_SIZE) {
         if(bytesToTransfer <= 0){
             fileLoadCompleted = true;
-            #ifdef DEBUG
-                ffile << "Load of file completed.\n\n"; ffile.flush();
-            #endif
             return;
         }
 
         if(state[i] == AVAILABLE){
             int packetLength = min((unsigned long long)payload, bytesToTransfer);
-
-            #ifdef DEBUG
-                ffile << "Data length: " <<  packetLength  << ", seqNum: " << seqNum << ", TIME: " << timeSinceStart() << "us" << endl;
-            #endif
 
             // initialize header
             data[i].header.type = DATA_HEADER;
@@ -161,10 +136,6 @@ CircularBuffer::CircularBuffer(int size, char * filename)
 
     seqNum = 0;
     sIdx = 0;
-
-    #ifdef DEBUG
-        recvfile.open("recvLog", std::ios::out);
-    #endif
 }
 
 void CircularBuffer::flushBuffer()
@@ -216,12 +187,6 @@ void CircularBuffer::sendAck()
         }
     }
 
-
-    #ifdef DEBUG
-        recvfile << "Sending Ack for " <<  seqNum - 1 << " as received\n";
-        recvfile.flush();
-    #endif
-
     uint32_t counter;
     uint64_t flags = createFlags(counter);
     if(counter >= CS_ACK_THRESHOLD){
@@ -245,10 +210,6 @@ void CircularBuffer::storeReceivedPacket(msg_packet_t & packet, uint32_t packetL
     ack.type = ACK_HEADER;
     packet.header.seqNum = ntohl(packet.header.seqNum);
     size_t bufIdx = packet.header.seqNum % data.size();
-
-    #ifdef DEBUG
-        recvfile << "Packet Seen: " << packet.header.seqNum << endl;
-    #endif
 
     if(packet.header.seqNum == seqNum - 1){
         ack.seqNum = htonl(seqNum - 1);

@@ -86,9 +86,6 @@ class TCP
         int expectedAckSeqNum;
         int lastPacketSent;
         int numRetransmissions;
-
-        // degbuging
-        ofstream sfile, afile, rttfile;
 };
 
 

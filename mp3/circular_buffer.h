@@ -54,9 +54,6 @@ class CircularBuffer
         // debuging
         unsigned long long timeSinceStart();
         struct timeval start;
-
-        ofstream ffile;
-        ofstream recvfile;
 };
 
 
