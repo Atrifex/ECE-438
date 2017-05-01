@@ -4,9 +4,9 @@
 #include "types.h"
 
 // Window Properties
-#define INIT_SWS                    (100)
 #define BUFFER_SIZE                 (512)
-#define MAX_WINDOW_SIZE             (BUFFER_SIZE/2)
+#define MAX_WINDOW_SIZE             (BUFFER_SIZE/4)
+#define INIT_SWS                    (MAX_WINDOW_SIZE/2)
 #define MIN_WINDOW_SIZE             (10)
 
 #define INIT_RTO                    (80000)     // in microseconds
